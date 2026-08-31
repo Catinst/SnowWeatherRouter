@@ -11,6 +11,15 @@ RES_XML_START_ELEMENT_TYPE=0x0102
 RES_XML_END_ELEMENT_TYPE=0x0103
 ROUTER_ALIAS='libSnowWeatherRouter.so'
 ORIGINAL_HOST='libweather_app.so'
+MANIFEST_STRING_REPLACEMENTS={
+ 'weather;weatherinfo':'weathr3;weathr3info',
+ 'weather.location':'weathr3.location',
+}
+BINARY_REPLACEMENTS=[
+ (b'weather;weatherinfo',b'weathr3;weathr3info'),
+ (b'weather.location',b'weathr3.location'),
+ (b'content://weather',b'content://weathr3'),
+]
 
 def run(cmd):
  print('+',subprocess.list2cmdline([str(x) for x in cmd]));subprocess.run([str(x) for x in cmd],check=True)
@@ -92,11 +101,13 @@ def rebuild_utf16_string_pool(data: bytes, replacements: dict[str,str]) -> tuple
 
 def patch_manifest(data:bytes,source_package:str,target_package:str,version_code:int,version_name:str):
  data,runtime_nodes_removed=remove_required_rust_runtime_library(data)
- data,string_hits=rebuild_utf16_string_pool(data,{ORIGINAL_HOST:ROUTER_ALIAS})
+ replacements={ORIGINAL_HOST:ROUTER_ALIAS,**MANIFEST_STRING_REPLACEMENTS}
+ data,string_hits=rebuild_utf16_string_pool(data,replacements)
  out=bytearray(data);old=source_package.encode('utf-16le');new=target_package.encode('utf-16le')
  if len(old)!=len(new):raise ValueError('package length mismatch')
  package_hits=out.count(old);out[:]=out.replace(old,new)
  host_hits=string_hits[ORIGINAL_HOST];version_name_hits=0
+ authority_hits={key:string_hits[key] for key in MANIFEST_STRING_REPLACEMENTS}
  # patch versionCode typed integer in manifest element
  version_code_hits=0
  for ev in parse_events(bytes(out)):
@@ -105,12 +116,12 @@ def patch_manifest(data:bytes,source_package:str,target_package:str,version_code
    if a:p32(out,a.data_offset,version_code);version_code_hits+=1
  if host_hits!=1:raise ValueError(f'expected one app lib name, got {host_hits}')
  if version_code_hits!=1:raise ValueError(f'versionCode hits {version_code_hits}')
- return bytes(out),{'package_hits':package_hits,'host_alias_hits':host_hits,'version_code_hits':version_code_hits,'version_name_hits':version_name_hits,'runtime_nodes_removed':runtime_nodes_removed}
+ return bytes(out),{'package_hits':package_hits,'host_alias_hits':host_hits,'version_code_hits':version_code_hits,'version_name_hits':version_name_hits,'runtime_nodes_removed':runtime_nodes_removed,'authority_hits':authority_hits}
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('input',type=Path);ap.add_argument('--router',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--source-package',default='com.miui.weather2');ap.add_argument('--target-package',default='com.miui.weather3');args=ap.parse_args()
  with zipfile.ZipFile(args.input) as src:
-  manifest,report=patch_manifest(src.read('AndroidManifest.xml'),args.source_package,args.target_package,180000243,'[IP]-D')
+  manifest,report=patch_manifest(src.read('AndroidManifest.xml'),args.source_package,args.target_package,180000244,'[IP]-R')
   router=args.router.read_bytes();args.output.parent.mkdir(parents=True,exist_ok=True)
   with zipfile.ZipFile(args.output,'w',allowZip64=True) as dst:
    names=[]
@@ -119,7 +130,11 @@ def main():
     if SIGNATURE_RE.match(info.filename):continue
     data=manifest if info.filename=='AndroidManifest.xml' else src.read(info)
     olda=args.source_package.encode();newa=args.target_package.encode();oldu=args.source_package.encode('utf-16le');newu=args.target_package.encode('utf-16le')
-    if info.filename!='AndroidManifest.xml':data=data.replace(olda,newa).replace(oldu,newu)
+    if info.filename!='AndroidManifest.xml':
+     data=data.replace(olda,newa).replace(oldu,newu)
+     for old_value,new_value in BINARY_REPLACEMENTS:
+      if len(old_value)!=len(new_value):raise ValueError((old_value,new_value))
+      data=data.replace(old_value,new_value).replace(old_value.decode().encode('utf-16le'),new_value.decode().encode('utf-16le'))
     clone=zipfile.ZipInfo(info.filename,info.date_time);clone.compress_type=info.compress_type;clone.create_system=info.create_system;clone.external_attr=info.external_attr;clone.extra=info.extra;clone.comment=info.comment
     if info.compress_type==zipfile.ZIP_DEFLATED:dst.writestr(clone,data,compress_type=info.compress_type,compresslevel=9)
     else:dst.writestr(clone,data,compress_type=info.compress_type)

@@ -18,6 +18,8 @@ REQUIRED_SYMBOLS = {
     "SNOW_WEATHER_ROUTER_BUILD",
     "Java_com_miui_weather3_ActivityWeatherMain_nativeSetUserAgreement",
     "Java_com_miui_weather3_ActivityWeatherMain_nativeSetLocationPermission",
+    "Java_com_miui_weather3_ActivityWeatherMain_nativeDeliverActivityResult",
+    "Java_com_miui_weather3_ActivityWeatherMain_nativeDeliverPermissionResult",
 }
 
 
@@ -26,7 +28,7 @@ def main() -> None:
     parser.add_argument("library", type=Path)
     args = parser.parse_args()
     payload = args.library.read_bytes()
-    if b"SnowWeatherRouter|Snownight|v17-hybrid\0" not in payload:
+    if b"SnowWeatherRouter|Snownight|v18-hybrid\0" not in payload:
         raise SystemExit("Snow watermark is missing")
 
     with args.library.open("rb") as stream:
@@ -55,7 +57,7 @@ def main() -> None:
     print(f"path={args.library}")
     print(f"size={len(payload)}")
     print(f"sha256={hashlib.sha256(payload).hexdigest()}")
-    print("watermark=SnowWeatherRouter|Snownight|v17-hybrid")
+    print("watermark=SnowWeatherRouter|Snownight|v18-hybrid")
     print(f"needed={','.join(sorted(needed))}")
     print(f"symbols={','.join(sorted(REQUIRED_SYMBOLS))}")
 

@@ -23,14 +23,21 @@ public final class ActivityWeatherMain extends NativeActivity {
 
     private static native void nativeSetUserAgreement(boolean agreed);
     private static native void nativeSetLocationPermission(boolean granted);
+    private static native void nativeDeliverActivityResult(int resultCode);
+    private static native void nativeDeliverPermissionResult(int fineResult, int coarseResult);
 
     private boolean isAgreed() {
         return getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_APP_RUN, false);
     }
 
+    private int permissionResult(String permission) {
+        return checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+                ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED;
+    }
+
     private boolean hasForegroundLocation() {
-        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        return permissionResult(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || permissionResult(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -40,8 +47,6 @@ public final class ActivityWeatherMain extends NativeActivity {
         nativeSetLocationPermission(hasForegroundLocation());
         super.onCreate(state);
         if (!agreed && state == null) {
-            // Match the original order: establish Flutter and its first route,
-            // then present the system CTA above the weather activity.
             getWindow().getDecorView().postDelayed(this::launchCta, 500L);
         }
     }
@@ -61,43 +66,63 @@ public final class ActivityWeatherMain extends NativeActivity {
             Log.i(TAG, "Launching system CTA requestCode=1007");
             startActivityForResult(intent, REQUEST_CTA);
         } catch (ActivityNotFoundException | SecurityException error) {
-            Log.w(TAG, "System CTA unavailable; using explicit local consent dialog", error);
-            new AlertDialog.Builder(this)
-                    .setTitle("天气服务")
-                    .setMessage("是否同意应用联网，并使用定位权限展示当地天气？")
-                    .setNegativeButton("不同意", (dialog, which) -> finishAndRemoveTask())
-                    .setPositiveButton("同意", (dialog, which) -> handleCtaResult(1))
-                    .setCancelable(false)
-                    .show();
+            Log.w(TAG, "System CTA unavailable; using local consent", error);
+            showLocalConsent();
         }
     }
 
-    private void handleCtaResult(int resultCode) {
-        if (resultCode != 1) {
-            Log.i(TAG, "CTA declined resultCode=" + resultCode);
-            nativeSetUserAgreement(false);
-            finishAndRemoveTask();
+    private void showLocalConsent() {
+        if (isFinishing() || isDestroyed()) {
             return;
         }
+        new AlertDialog.Builder(this)
+                .setTitle("天气服务")
+                .setMessage("是否同意应用联网，并使用定位权限展示当地天气？")
+                .setNegativeButton("不同意", (dialog, which) -> handleCtaDecline())
+                .setPositiveButton("同意", (dialog, which) -> handleCtaAccept())
+                .setCancelable(false)
+                .show();
+    }
+
+    private void handleCtaAccept() {
         Log.i(TAG, "CTA accepted resultCode=1");
         SharedPreferences.Editor edit = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
         edit.putBoolean(KEY_APP_RUN, true).apply();
         nativeSetUserAgreement(true);
+        nativeDeliverActivityResult(1);
         if (!hasForegroundLocation()) {
-            requestPermissions(
+            getWindow().getDecorView().postDelayed(() -> requestPermissions(
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    REQUEST_LOCATION);
+                    REQUEST_LOCATION), 400L);
         } else {
             nativeSetLocationPermission(true);
-            recreate();
+            nativeDeliverPermissionResult(
+                    permissionResult(Manifest.permission.ACCESS_FINE_LOCATION),
+                    permissionResult(Manifest.permission.ACCESS_COARSE_LOCATION));
         }
+    }
+
+    private void handleCtaDecline() {
+        Log.i(TAG, "CTA declined by user");
+        nativeSetUserAgreement(false);
+        nativeDeliverActivityResult(0);
+        moveTaskToBack(true);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CTA) {
-            handleCtaResult(resultCode);
+        if (requestCode != REQUEST_CTA) {
+            return;
+        }
+        if (resultCode == 1) {
+            handleCtaAccept();
+        } else if (resultCode == -2) {
+            Log.i(TAG, "System CTA rejected weather3 resultCode=-2; falling back locally");
+            getWindow().getDecorView().post(this::showLocalConsent);
+        } else {
+            Log.i(TAG, "System CTA declined resultCode=" + resultCode);
+            handleCtaDecline();
         }
     }
 
@@ -105,10 +130,13 @@ public final class ActivityWeatherMain extends NativeActivity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_LOCATION) {
-            boolean granted = hasForegroundLocation();
-            Log.i(TAG, "Location permission result granted=" + granted);
+            int fine = permissionResult(Manifest.permission.ACCESS_FINE_LOCATION);
+            int coarse = permissionResult(Manifest.permission.ACCESS_COARSE_LOCATION);
+            boolean granted = fine == PackageManager.PERMISSION_GRANTED
+                    || coarse == PackageManager.PERMISSION_GRANTED;
+            Log.i(TAG, "Location permission result fine=" + fine + " coarse=" + coarse);
             nativeSetLocationPermission(granted);
-            recreate();
+            nativeDeliverPermissionResult(fine, coarse);
         }
     }
 }

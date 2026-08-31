@@ -17,14 +17,14 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v17-hybrid\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v17-hybrid\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v18-hybrid\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v18-hybrid\0";
 
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow hybrid DEX host router v17\0".len()] =
-    *b"Snow hybrid DEX host router v17\0";
+pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow hybrid CTA callback router v18\0".len()] =
+    *b"Snow hybrid CTA callback router v18\0";
 
 const ANDROID_LOG_INFO: c_int = 4;
 const ANDROID_LOG_WARN: c_int = 5;
@@ -55,12 +55,19 @@ const CHANNEL_WEATHER_METHOD: &[u8] = b"weather_method_channel";
 const CHANNEL_WEATHER_BASIC: &[u8] = b"weather_channel";
 const CHANNEL_SHORTCUT: &[u8] = b"com.android.content.shortcut.method.channel";
 const CHANNEL_INTENT: &[u8] = b"com.android.content.intent.method.channel";
+const CHANNEL_PERMISSION: &[u8] = b"com.android.permission.method.channel";
 
 const LIFECYCLE_RESUMED: &[u8] = b"AppLifecycleState.resumed";
 const LIFECYCLE_INACTIVE: &[u8] = b"AppLifecycleState.inactive";
 const LIFECYCLE_PAUSED: &[u8] = b"AppLifecycleState.paused";
 const LIFECYCLE_DETACHED: &[u8] = b"AppLifecycleState.detached";
 const ON_READY: &[u8] = b"{\"method\":\"onReady\",\"args\":null}";
+const CTA_ACTIVITY_RESULT_ACCEPTED: &[u8] = b"{\"method\":\"onActivityResult\",\"args\":{\"request_code\":1007,\"result_code\":1}}";
+const CTA_ACTIVITY_RESULT_DECLINED: &[u8] = b"{\"method\":\"onActivityResult\",\"args\":{\"request_code\":1007,\"result_code\":0}}";
+const PERMISSION_RESULT_BOTH_GRANTED: &[u8] = b"{\"method\":\"on_request_permission_result\",\"args\":{\"permissions\":[\"android.permission.ACCESS_FINE_LOCATION\",\"android.permission.ACCESS_COARSE_LOCATION\"],\"grant_results\":[0,0],\"request_code\":10000}}";
+const PERMISSION_RESULT_FINE_ONLY: &[u8] = b"{\"method\":\"on_request_permission_result\",\"args\":{\"permissions\":[\"android.permission.ACCESS_FINE_LOCATION\",\"android.permission.ACCESS_COARSE_LOCATION\"],\"grant_results\":[0,-1],\"request_code\":10000}}";
+const PERMISSION_RESULT_COARSE_ONLY: &[u8] = b"{\"method\":\"on_request_permission_result\",\"args\":{\"permissions\":[\"android.permission.ACCESS_FINE_LOCATION\",\"android.permission.ACCESS_COARSE_LOCATION\"],\"grant_results\":[-1,0],\"request_code\":10000}}";
+const PERMISSION_RESULT_DENIED: &[u8] = b"{\"method\":\"on_request_permission_result\",\"args\":{\"permissions\":[\"android.permission.ACCESS_FINE_LOCATION\",\"android.permission.ACCESS_COARSE_LOCATION\"],\"grant_results\":[-1,-1],\"request_code\":10000}}";
 
 const JSON_NULL: &[u8] = b"[null]";
 const JSON_TRUE: &[u8] = b"[true]";
@@ -78,7 +85,7 @@ const JSON_SHARED_OPEN: &[u8] = b"[\"SnowWeatherPrefs\"]";
 const JSON_SHARED_APP_RUN_OPEN: &[u8] = b"[\"SnowWeatherAppRun\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
-const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v17-hybrid\",\"versionCode\":180000247,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v18-hybrid\",\"versionCode\":180000248,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
 const JSON_CN: &[u8] = b"[\"cn\"]";
 const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
 
@@ -394,6 +401,44 @@ pub unsafe extern "C" fn Java_com_miui_weather3_ActivityWeatherMain_nativeSetLoc
     } else {
         log_static(ANDROID_LOG_INFO, b"Snow location permission denied\0");
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_miui_weather3_ActivityWeatherMain_nativeDeliverActivityResult(
+    _: *mut c_void,
+    _: *mut c_void,
+    result_code: i32,
+) {
+    if result_code == 1 {
+        USER_AGREED = 1;
+        dispatch(CHANNEL_INTENT, CTA_ACTIVITY_RESULT_ACCEPTED);
+        log_static(ANDROID_LOG_INFO, b"Snow delivered CTA resultCode=1 to Flutter\0");
+    } else {
+        USER_AGREED = 0;
+        dispatch(CHANNEL_INTENT, CTA_ACTIVITY_RESULT_DECLINED);
+        log_static(ANDROID_LOG_INFO, b"Snow delivered CTA decline to Flutter\0");
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_miui_weather3_ActivityWeatherMain_nativeDeliverPermissionResult(
+    _: *mut c_void,
+    _: *mut c_void,
+    fine_result: i32,
+    coarse_result: i32,
+) {
+    LOCATION_PERMISSION_GRANTED = if fine_result == 0 || coarse_result == 0 { 1 } else { 0 };
+    let payload = if fine_result == 0 && coarse_result == 0 {
+        PERMISSION_RESULT_BOTH_GRANTED
+    } else if fine_result == 0 {
+        PERMISSION_RESULT_FINE_ONLY
+    } else if coarse_result == 0 {
+        PERMISSION_RESULT_COARSE_ONLY
+    } else {
+        PERMISSION_RESULT_DENIED
+    };
+    dispatch(CHANNEL_PERMISSION, payload);
+    log_static(ANDROID_LOG_INFO, b"Snow delivered location permission result to Flutter\0");
 }
 
 unsafe fn interface_entry(offset: usize) -> *const c_void {
@@ -1086,13 +1131,16 @@ unsafe extern "C" fn on_destroy(_: *mut ANativeActivity) {
     if !(*state).input_looper.is_null() {
         ALooper_release((*state).input_looper);
     }
-    if !(*state).holder.is_null() {
-        call_destroy_holder((*state).holder);
-    }
-    if !(*state).runtime.is_null() {
-        call_runtime_destroy((*state).runtime);
-    }
-    ptr::write(state, RouterState::empty());
+    (*state).activity = ptr::null_mut();
+    (*state).window = ptr::null_mut();
+    (*state).input_queue = ptr::null_mut();
+    (*state).input_looper = ptr::null_mut();
+    (*state).resumed = 0;
+    // The HyperOS engine destroys AndroidNativeWindow asynchronously. On this
+    // legacy host, immediately destroying holder/runtime after the Java window
+    // is removed dereferences the expired ANativeWindow and SIGBUSes. Retain the
+    // engine until process exit; normal force-stop still performs kernel cleanup.
+    log_static(ANDROID_LOG_INFO, b"Snow retained engine until process exit\0");
 }
 
 unsafe extern "C" fn on_window_focus_changed(_: *mut ANativeActivity, focused: c_int) {

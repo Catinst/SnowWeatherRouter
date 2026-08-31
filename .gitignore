@@ -1,0 +1,30 @@
+# Proprietary input/output artifacts
+*.apk
+*.apks
+*.aab
+*.so
+*.idsig
+*.jks
+*.keystore
+
+# Local build state
+.tools/
+dist/
+input/
+output/
+artifacts/
+*.log
+*.obj
+*.o
+*.rlib
+
+# Python / IDE
+__pycache__/
+*.py[cod]
+.venv*/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

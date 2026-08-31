@@ -1,0 +1,122 @@
+name: Build Snow APK from Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag containing the source APK
+        required: true
+        type: string
+      asset_name:
+        description: Source APK asset name (blank = first non-Snow APK)
+        required: false
+        type: string
+      target_package:
+        description: Equal-length target package name
+        required: false
+        default: com.miui.weather3
+        type: string
+      output_name:
+        description: Output APK filename (blank = automatic)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+      TARGET_PACKAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.target_package || 'com.miui.weather3' }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Set up Rust Android target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform and Python dependencies
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Select and download source APK
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input dist
+          requested='${{ github.event_name == 'workflow_dispatch' && inputs.asset_name || '' }}'
+          if [[ -n "$requested" ]]; then
+            asset="$requested"
+          else
+            asset="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'               | grep -Ei '\.apk$'               | grep -Eiv 'Snow[-_]|Snow-unsigned'               | head -n 1 || true)"
+          fi
+          if [[ -z "$asset" ]]; then
+            echo 'No non-Snow APK asset was found in the release.' >&2
+            exit 1
+          fi
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"             --pattern "$asset" --dir input --clobber
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "path=input/$asset" >> "$GITHUB_OUTPUT"
+
+      - name: Build Snow-routed APK
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset='${{ steps.source.outputs.asset }}'
+          requested='${{ github.event_name == 'workflow_dispatch' && inputs.output_name || '' }}'
+          if [[ -n "$requested" ]]; then
+            output="$requested"
+          else
+            output="${asset%.apk}-Snow-unsigned.apk"
+          fi
+          python scripts/build_apk.py "input/$asset"             --output "dist/$output"             --sdk "$ANDROID_SDK_ROOT"             --target-package "$TARGET_PACKAGE"             | tee dist/build-report.txt
+          echo "name=$output" >> "$GITHUB_OUTPUT"
+          echo "path=dist/$output" >> "$GITHUB_OUTPUT"
+
+      - name: Verify generated manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          aapt2="$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name aapt2 | sort -V | tail -n 1)"
+          "$aapt2" dump xmltree --file AndroidManifest.xml '${{ steps.build.outputs.path }}'             | tee dist/manifest-dump.txt
+          grep -q 'android.app.NativeActivity' dist/manifest-dump.txt
+          grep -q 'SnowWeatherRouter' dist/manifest-dump.txt
+
+      - name: Upload Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnowWeatherRouter-${{ github.run_number }}
+          path: |
+            ${{ steps.build.outputs.path }}
+            dist/build-report.txt
+            dist/manifest-dump.txt
+          if-no-files-found: error
+
+      - name: Upload APK back to release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"             '${{ steps.build.outputs.path }}' --clobber

@@ -82,6 +82,7 @@ def main() -> None:
     build_stub(rustc, router / "link_stubs" / "libandroid.rs", stubs / "libandroid.so", "libandroid.so")
     build_stub(rustc, router / "link_stubs" / "liblog.rs", stubs / "liblog.so", "liblog.so")
     build_stub(rustc, router / "link_stubs" / "libc.rs", stubs / "libc.so", "libc.so")
+    build_stub(rustc, router / "link_stubs" / "libdl.rs", stubs / "libdl.so", "libdl.so")
     shutil.copy2(extracted / "libhyper_os_flutter.so", stubs / "libhyper_os_flutter.so")
     shutil.copy2(extracted / "libapp.so", stubs / "libapp.so")
 
@@ -124,6 +125,8 @@ def main() -> None:
             "link-arg=-l:liblog.so",
             "-C",
             "link-arg=-l:libc.so",
+            "-C",
+            "link-arg=-l:libdl.so",
             "-C",
             "link-arg=--allow-shlib-undefined",
             str(router / "src" / "lib.rs"),

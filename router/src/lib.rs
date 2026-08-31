@@ -17,14 +17,14 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v9\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v9\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v12\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v12\0";
 
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow full-source HyperOS router v9\0".len()] =
-    *b"Snow full-source HyperOS router v9\0";
+pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow full-source HyperOS router v12\0".len()] =
+    *b"Snow full-source HyperOS router v12\0";
 
 const ANDROID_LOG_INFO: c_int = 4;
 const ANDROID_LOG_WARN: c_int = 5;
@@ -76,7 +76,7 @@ const JSON_SHARED_OPEN: &[u8] = b"[\"SnowWeatherPrefs\"]";
 const JSON_SHARED_APP_RUN_OPEN: &[u8] = b"[\"SnowWeatherAppRun\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
-const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v9\",\"versionCode\":180000239,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v12\",\"versionCode\":180000242,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
 const JSON_CN: &[u8] = b"[\"cn\"]";
 const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
 
@@ -98,6 +98,9 @@ const ARG_AOT: &[u8] = b"--aot-shared-library-name=libapp.so";
 const ARG_ICU: &[u8] = b"--icu-symbol-prefix=_binary_icudtl_dat";
 const ARG_IMPELLER: &[u8] = b"--impeller-backend=vulkan";
 const ENTRYPOINT: &[u8] = b"main";
+const LIB_HYPER_APP_PUBLIC: &[u8] = b"libhyper_os_app_public.so\0";
+const RTLD_NOW: c_int = 2;
+const RTLD_GLOBAL: c_int = 0x100;
 
 #[repr(C)]
 pub struct ANativeActivityCallbacks {
@@ -260,6 +263,7 @@ unsafe extern "C" {
     fn ANativeWindow_getWidth(window: *mut ANativeWindow) -> i32;
     fn ANativeWindow_getHeight(window: *mut ANativeWindow) -> i32;
     fn __android_log_write(priority: c_int, tag: *const c_char, text: *const c_char) -> c_int;
+    fn dlopen(filename: *const c_char, flags: c_int) -> *mut c_void;
     fn snow_runtime_create_call(
         function: *const c_void,
         version: usize,
@@ -910,6 +914,15 @@ unsafe fn update_window_size(state: *mut RouterState) {
 
 unsafe fn initialize_engine() {
     let state = state_ptr();
+    let preload = dlopen(
+        LIB_HYPER_APP_PUBLIC.as_ptr() as *const c_char,
+        RTLD_NOW | RTLD_GLOBAL,
+    );
+    if preload.is_null() {
+        log_static(ANDROID_LOG_WARN, b"Snow preload libhyper_os_app_public.so failed\0");
+    } else {
+        log_static(ANDROID_LOG_INFO, b"Snow preload libhyper_os_app_public.so ok\0");
+    }
     if !(*state).runtime.is_null() || (*state).activity.is_null() {
         return;
     }

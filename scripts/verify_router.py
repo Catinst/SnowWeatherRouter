@@ -24,7 +24,7 @@ def main() -> None:
     parser.add_argument("library", type=Path)
     args = parser.parse_args()
     payload = args.library.read_bytes()
-    if b"SnowWeatherRouter|Snownight|v9\0" not in payload:
+    if b"SnowWeatherRouter|Snownight|v12\0" not in payload:
         raise SystemExit("Snow watermark is missing")
 
     with args.library.open("rb") as stream:
@@ -53,7 +53,7 @@ def main() -> None:
     print(f"path={args.library}")
     print(f"size={len(payload)}")
     print(f"sha256={hashlib.sha256(payload).hexdigest()}")
-    print("watermark=SnowWeatherRouter|Snownight|v9")
+    print("watermark=SnowWeatherRouter|Snownight|v12")
     print(f"needed={','.join(sorted(needed))}")
     print(f"symbols={','.join(sorted(REQUIRED_SYMBOLS))}")
 

@@ -176,6 +176,7 @@ def rewrite_apk(
     router: bytes,
     source_package: str,
     target_package: str,
+    extra_native_libs_dir: Path | None = None,
 ) -> dict[str, object]:
     if len(source_package) != len(target_package):
         raise SystemExit(
@@ -235,6 +236,19 @@ def rewrite_apk(
             else:
                 dst.writestr(copied, data, compress_type=info.compress_type)
 
+        if extra_native_libs_dir is not None:
+            for library in sorted(extra_native_libs_dir.glob("*.so")):
+                entry = f"lib/arm64-v8a/{library.name}"
+                if entry in source_names or entry == "lib/arm64-v8a/libSnowWeatherRouter.so":
+                    continue
+                info = zipfile.ZipInfo(entry)
+                info.compress_type = zipfile.ZIP_STORED
+                info.create_system = 3
+                info.external_attr = 0o100755 << 16
+                data = library.read_bytes()
+                dst.writestr(info, data, compress_type=zipfile.ZIP_STORED)
+                changed[entry] = {"extra_native_library": 1}
+
         if not seen_router:
             info = zipfile.ZipInfo("lib/arm64-v8a/libSnowWeatherRouter.so")
             info.compress_type = zipfile.ZIP_STORED
@@ -272,6 +286,11 @@ def main() -> None:
     parser.add_argument("--aapt2")
     parser.add_argument("--android-jar")
     parser.add_argument("--rustc")
+    parser.add_argument(
+        "--extra-native-libs-dir",
+        type=Path,
+        help="Optional local directory of additional arm64 .so files to embed (not used by the default Action)",
+    )
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[1]
@@ -327,6 +346,7 @@ def main() -> None:
             router,
             source_package,
             args.target_package,
+            args.extra_native_libs_dir.resolve() if args.extra_native_libs_dir else None,
         )
 
     result.update(

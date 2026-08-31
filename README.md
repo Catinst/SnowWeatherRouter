@@ -107,3 +107,8 @@ Do not delete the fallback merely because a newer APK builds successfully. A can
 
 GitHub source pushes do not build APKs: this repository's workflow runs only for a published Release or an explicit `workflow_dispatch` request.
 
+
+## Optional local native runtime bundle
+
+For an explicitly isolated local experiment, `scripts/build_apk.py` accepts `--extra-native-libs-dir <dir>` and embeds every arm64 `.so` in that directory under `lib/arm64-v8a/`. The default Release Action does not pass this option, so source pushes and ordinary Action builds remain unchanged. Proprietary system libraries must never be committed to this repository.
+

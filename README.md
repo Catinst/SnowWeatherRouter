@@ -1,6 +1,6 @@
 # SnowWeatherRouter
 
-带 **Snow / Snownight 水印**的 HyperOS Weather 原生路由器与可复现 APK 转换流水线。
+HyperOS Weather 原生路由器与可复现 APK 转换。
 
 私有仓库：<https://github.com/Catinst/SnowWeatherRouter>
 

@@ -95,3 +95,15 @@ python scripts/build_apk.py E:\APK\MIUIWeather.apk `
 - 本项目目前针对 arm64 HyperOS Flutter Weather ABI；
 - 新系统版本若 ABI 改变，应先更新 `docs/abi.md` 和 router 接口表；
 - 仅处理你拥有或获授权处理的 APK。
+
+## Candidate retention policy
+
+Local device iterations must retain both:
+
+1. the current experimental APK; and
+2. the most recent device-verified fallback APK.
+
+Do not delete the fallback merely because a newer APK builds successfully. A candidate may replace the fallback only after device validation confirms that it launches without regressing the previously verified engine, viewport, Surface, and first-frame milestones. Known-broken experiments and duplicate files under `dist/` may be removed, but the last verified root-level fallback stays available.
+
+GitHub source pushes do not build APKs: this repository's workflow runs only for a published Release or an explicit `workflow_dispatch` request.
+

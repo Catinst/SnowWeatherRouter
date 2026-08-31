@@ -17,14 +17,14 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v2\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v2\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v9\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v9\0";
 
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow full-source HyperOS router v2\0".len()] =
-    *b"Snow full-source HyperOS router v2\0";
+pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow full-source HyperOS router v9\0".len()] =
+    *b"Snow full-source HyperOS router v9\0";
 
 const ANDROID_LOG_INFO: c_int = 4;
 const ANDROID_LOG_WARN: c_int = 5;
@@ -37,6 +37,7 @@ const CHANNEL_SYSTEM_PROPERTIES: &[u8] = b"com.android.os.system.properties.meth
 const CHANNEL_PACKAGE_MANAGER: &[u8] = b"com.android.package.manager.method.channel";
 const CHANNEL_SHARED_ROOT: &[u8] = b"hyperos/shared_preferences";
 const CHANNEL_SHARED_CHILD: &[u8] = b"SnowWeatherPrefs";
+const CHANNEL_SHARED_APP_RUN: &[u8] = b"SnowWeatherAppRun";
 const CHANNEL_DEVICE_LEVEL: &[u8] = b"com.miui.performance.devicelevelutils.method.channel";
 const CHANNEL_CONFIGURATION: &[u8] = b"com.xiaomi.hyperos/configuration";
 const CHANNEL_ROUNDED_CORNER: &[u8] = b"com.xiaomi.hyperos/rounded_corner";
@@ -49,6 +50,10 @@ const CHANNEL_PATH_PROVIDER: &[u8] = b"plugins.flutter.io/path_provider";
 const CHANNEL_URL_LAUNCHER: &[u8] = b"plugins.flutter.io/url_launcher";
 const CHANNEL_HAPTIC: &[u8] = b"com.xiaomi.hyperos/haptic";
 const CHANNEL_TRACE: &[u8] = b"com.xiaomi.hyperos/trace";
+const CHANNEL_SETTINGS: &[u8] = b"com.android.os.provider.settings.method.channel";
+const CHANNEL_WEATHER_METHOD: &[u8] = b"weather_method_channel";
+const CHANNEL_WEATHER_BASIC: &[u8] = b"weather_channel";
+const CHANNEL_SHORTCUT: &[u8] = b"com.android.content.shortcut.method.channel";
 
 const LIFECYCLE_RESUMED: &[u8] = b"AppLifecycleState.resumed";
 const LIFECYCLE_INACTIVE: &[u8] = b"AppLifecycleState.inactive";
@@ -63,22 +68,34 @@ const JSON_ZERO: &[u8] = b"[0]";
 const JSON_FALSE_STRING: &[u8] = b"[\"false\"]";
 const JSON_EMPTY_MAP: &[u8] = b"[{}]";
 const JSON_EMPTY_LIST: &[u8] = b"[[]]";
+const JSON_EMPTY_STRING: &[u8] = b"[\"[]\"]";
 const JSON_ZERO_CORNERS: &[u8] = b"[[0,0,0,0]]";
 const JSON_GLASS_UNSUPPORTED: &[u8] =
     b"[{\"isSupportMaterial\":false,\"isSupportGlass\":false}]";
 const JSON_SHARED_OPEN: &[u8] = b"[\"SnowWeatherPrefs\"]";
+const JSON_SHARED_APP_RUN_OPEN: &[u8] = b"[\"SnowWeatherAppRun\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
-const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"1\",\"versionCode\":180000231,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v9\",\"versionCode\":180000239,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const JSON_CN: &[u8] = b"[\"cn\"]";
+const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
 
 const STANDARD_NULL: &[u8] = &[0x00, 0x00];
 const STANDARD_TRUE: &[u8] = &[0x00, 0x01];
 const STANDARD_FALSE: &[u8] = &[0x00, 0x02];
 const STANDARD_EMPTY_MAP: &[u8] = &[0x00, 0x0d, 0x00];
+const STANDARD_APP_RUN_TRUE_MAP: &[u8] = &[
+    0x00, 0x0d, 0x01,
+    0x07, 0x07, b'a', b'p', b'p', b'_', b'r', b'u', b'n',
+    0x01,
+];
+const STANDARD_INT_ZERO: &[u8] = &[0x00, 0x03, 0x00, 0x00, 0x00, 0x00];
+const STANDARD_INT_TWO: &[u8] = &[0x00, 0x03, 0x02, 0x00, 0x00, 0x00];
+const BASIC_NULL: &[u8] = &[0x00];
+const BASIC_APP_PATH: &[u8] = b"\x07\x21/data/user_de/0/com.miui.weather3";
 
 const ARG_AOT: &[u8] = b"--aot-shared-library-name=libapp.so";
 const ARG_ICU: &[u8] = b"--icu-symbol-prefix=_binary_icudtl_dat";
-// Preserve the working Xiaomi bridge's observed 17-byte argument length.
 const ARG_IMPELLER: &[u8] = b"--impeller-backend=vulkan";
 const ENTRYPOINT: &[u8] = b"main";
 
@@ -157,8 +174,68 @@ struct HyperString {
     len: usize,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct HyperSlice<T> {
+    ptr: *const T,
+    len: usize,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct HyperViewportMetrics {
+    device_pixel_ratio: f64,
+    physical_width: f64,
+    physical_height: f64,
+    physical_touch_slop: f64,
+    physical_view_padding_top: f64,
+    physical_view_padding_right: f64,
+    physical_view_padding_bottom: f64,
+    physical_view_padding_left: f64,
+    physical_view_inset_top: f64,
+    physical_view_inset_right: f64,
+    physical_view_inset_bottom: f64,
+    physical_view_inset_left: f64,
+    physical_system_gesture_inset_top: f64,
+    physical_system_gesture_inset_right: f64,
+    physical_system_gesture_inset_bottom: f64,
+    physical_system_gesture_inset_left: f64,
+    display_features: HyperSlice<f64>,
+    display_feature_bounds: HyperSlice<i32>,
+    display_feature_types: HyperSlice<i32>,
+    display_id: usize,
+}
+
+impl HyperViewportMetrics {
+    const fn empty() -> Self {
+        Self {
+            device_pixel_ratio: 2.75,
+            physical_width: 1080.0,
+            physical_height: 2400.0,
+            physical_touch_slop: 0.0,
+            physical_view_padding_top: 0.0,
+            physical_view_padding_right: 104.0,
+            physical_view_padding_bottom: 0.0,
+            physical_view_padding_left: 53.0,
+            physical_view_inset_top: 0.0,
+            physical_view_inset_right: 0.0,
+            physical_view_inset_bottom: 0.0,
+            physical_view_inset_left: 0.0,
+            physical_system_gesture_inset_top: 0.0,
+            physical_system_gesture_inset_right: 0.0,
+            physical_system_gesture_inset_bottom: 0.0,
+            physical_system_gesture_inset_left: 0.0,
+            display_features: HyperSlice { ptr: ptr::null(), len: 0 },
+            display_feature_bounds: HyperSlice { ptr: ptr::null(), len: 0 },
+            display_feature_types: HyperSlice { ptr: ptr::null(), len: 0 },
+            display_id: 0,
+        }
+    }
+}
+
 static mut STATE: RouterState = RouterState::empty();
 static mut HYPER_CALLBACKS: [usize; 16] = [0; 16];
+static mut VIEWPORT_METRICS: HyperViewportMetrics = HyperViewportMetrics::empty();
 static mut ENGINE_ARGS: [HyperString; 4] = [
     HyperString {
         ptr: ptr::null(),
@@ -309,6 +386,12 @@ unsafe fn call_reply(
     function(holder, payload, payload_len, reply_id);
 }
 
+unsafe fn call_set_viewport_metrics(holder: *mut c_void, metrics: *const HyperViewportMetrics) {
+    type Function = unsafe extern "C" fn(*mut c_void, *const HyperViewportMetrics);
+    let function: Function = mem::transmute(interface_entry(0xa0));
+    function(holder, metrics);
+}
+
 unsafe fn call_surface_create(holder: *mut c_void, window: *mut ANativeWindow) {
     type Function = unsafe extern "C" fn(*mut c_void, *mut ANativeWindow);
     let function: Function = mem::transmute(interface_entry(0xa8));
@@ -319,6 +402,18 @@ unsafe fn call_set_window_size(holder: *mut c_void, width: i32, height: i32) {
     type Function = unsafe extern "C" fn(*mut c_void, i32, i32);
     let function: Function = mem::transmute(interface_entry(0xb0));
     function(holder, width, height);
+}
+
+unsafe fn call_update_display_attributes(
+    holder: *mut c_void,
+    refresh_rate: f64,
+    width: f64,
+    height: f64,
+    device_pixel_ratio: f64,
+) {
+    type Function = unsafe extern "C" fn(*mut c_void, f64, f64, f64, f64);
+    let function: Function = mem::transmute(interface_entry(0xc8));
+    function(holder, refresh_rate, width, height, device_pixel_ratio);
 }
 
 unsafe fn call_surface_destroy(holder: *mut c_void) {
@@ -496,6 +591,10 @@ unsafe fn send_on_ready() {
 
 unsafe extern "C" fn hyper_noop() {}
 
+unsafe extern "C" fn hyper_first_frame_callback(_: *mut c_void) {
+    log_static(ANDROID_LOG_INFO, b"Snow onFirstFrame callback\0");
+}
+
 unsafe extern "C" fn platform_message_callback(
     context: *mut c_void,
     channel_ptr: *const u8,
@@ -548,9 +647,23 @@ unsafe extern "C" fn platform_message_callback(
 
     if bytes_equal(channel, CHANNEL_SHARED_ROOT) {
         if json_method_is(payload, b"open") {
-            reply(state, reply_id, JSON_SHARED_OPEN);
+            if contains(payload, b"com.miui.providers.weather.apprun") {
+                reply(state, reply_id, JSON_SHARED_APP_RUN_OPEN);
+            } else {
+                reply(state, reply_id, JSON_SHARED_OPEN);
+            }
         } else {
             reply(state, reply_id, JSON_NULL);
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_SHARED_APP_RUN) {
+        match standard_method(payload) {
+            Some(method) if method == b"reload" || method == b"getAll" => {
+                reply(state, reply_id, STANDARD_APP_RUN_TRUE_MAP)
+            }
+            _ => reply(state, reply_id, STANDARD_NULL),
         }
         return;
     }
@@ -587,7 +700,7 @@ unsafe extern "C" fn platform_message_callback(
         } else if json_method_is(payload, b"configuration")
             || json_method_is(payload, b"configurations")
         {
-            reply(state, reply_id, JSON_EMPTY_MAP);
+            reply(state, reply_id, JSON_CONFIGURATION);
         } else {
             reply(state, reply_id, JSON_NULL);
         }
@@ -626,6 +739,64 @@ unsafe extern "C" fn platform_message_callback(
     if bytes_equal(channel, CHANNEL_SYSTEM_NAVIGATION) {
         if json_method_is(payload, b"getNavigationMode") {
             reply(state, reply_id, b"[2]");
+        } else {
+            reply(state, reply_id, JSON_NULL);
+        }
+        return;
+    }
+
+
+    if bytes_equal(channel, CHANNEL_SETTINGS) {
+        match standard_method(payload) {
+            Some(method) if method == b"getLong" => {
+                if contains(payload, b"navigation_mode") {
+                    reply(state, reply_id, STANDARD_INT_TWO);
+                } else {
+                    reply(state, reply_id, STANDARD_INT_ZERO);
+                }
+            }
+            _ => reply(state, reply_id, STANDARD_NULL),
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_WEATHER_METHOD) {
+        if json_method_is(payload, b"get_device_com_level")
+            || json_method_is(payload, b"get_device_com_version")
+        {
+            reply(state, reply_id, b"[3]");
+        } else if json_method_is(payload, b"get_job_is_working") {
+            reply(state, reply_id, JSON_FALSE);
+        } else if json_method_is(payload, b"requestScheduleTask") {
+            reply(state, reply_id, JSON_TRUE);
+        } else if json_method_is(payload, b"get_network_country_iso") {
+            reply(state, reply_id, JSON_CN);
+        } else if json_method_is(payload, b"check_permission") {
+            reply(state, reply_id, JSON_ZERO);
+        } else {
+            reply(state, reply_id, JSON_NULL);
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_WEATHER_BASIC) {
+        match standard_method(payload) {
+            Some(method) if method == b"get_app_path" => {
+                reply(state, reply_id, BASIC_APP_PATH)
+            }
+            _ => reply(state, reply_id, BASIC_NULL),
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_SHORTCUT) {
+        if json_method_is(payload, b"getDynamicShortcuts") {
+            reply(state, reply_id, JSON_EMPTY_STRING);
+        } else if json_method_is(payload, b"reportShortcutUsed")
+            || json_method_is(payload, b"addDynamicShortcuts")
+            || json_method_is(payload, b"updateShortcuts")
+        {
+            reply(state, reply_id, JSON_TRUE);
         } else {
             reply(state, reply_id, JSON_NULL);
         }
@@ -674,7 +845,7 @@ unsafe fn initialize_hyper_callbacks() {
     let callbacks = ptr::addr_of_mut!(HYPER_CALLBACKS) as *mut usize;
     ptr::write(callbacks.add(0), 0x68);
     ptr::write(callbacks.add(1), hyper_noop as *const () as usize);
-    ptr::write(callbacks.add(2), hyper_noop as *const () as usize);
+    ptr::write(callbacks.add(2), hyper_first_frame_callback as *const () as usize);
     ptr::write(callbacks.add(3), hyper_noop as *const () as usize);
     ptr::write(callbacks.add(4), platform_message_callback as *const () as usize);
     let mut index = 5usize;
@@ -707,7 +878,7 @@ unsafe fn initialize_engine_args() {
         args.add(2),
         HyperString {
             ptr: ARG_IMPELLER.as_ptr(),
-            len: 17,
+            len: ARG_IMPELLER.len(),
         },
     );
     ptr::write(
@@ -725,7 +896,16 @@ unsafe fn update_window_size(state: *mut RouterState) {
     }
     let width = ANativeWindow_getWidth((*state).window);
     let height = ANativeWindow_getHeight((*state).window);
+    let metrics = ptr::addr_of_mut!(VIEWPORT_METRICS);
+    (*metrics).physical_width = width as f64;
+    (*metrics).physical_height = height as f64;
+
+    // Match the verified OS4 host ordering before its first frame:
+    // display attributes -> viewport metrics -> surface changed.
+    call_update_display_attributes((*state).holder, 0.0, 0.0, 0.0, 2.75);
+    call_set_viewport_metrics((*state).holder, metrics as *const HyperViewportMetrics);
     call_set_window_size((*state).holder, width, height);
+    log_static(ANDROID_LOG_INFO, b"Snow viewport metrics pushed\0");
 }
 
 unsafe fn initialize_engine() {
@@ -830,7 +1010,6 @@ unsafe extern "C" fn on_window_focus_changed(_: *mut ANativeActivity, focused: c
         }
     }
 }
-
 unsafe extern "C" fn on_native_window_created(
     _: *mut ANativeActivity,
     window: *mut ANativeWindow,

@@ -107,9 +107,14 @@ jobs:
         run: |
           set -euo pipefail
           aapt2="$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt2"
-          "$aapt2" dump xmltree --file AndroidManifest.xml '${{ steps.build.outputs.path }}'             | tee dist/manifest-dump.txt
+          "$aapt2" dump xmltree --file AndroidManifest.xml '${{ steps.build.outputs.path }}' \
+            | tee dist/manifest-dump.txt
+          "$aapt2" dump badging '${{ steps.build.outputs.path }}' \
+            | tee dist/badging.txt
           grep -q 'android.app.NativeActivity' dist/manifest-dump.txt
           grep -q 'SnowWeatherRouter' dist/manifest-dump.txt
+          grep -Eq "package: .*versionCode='[0-9]+'.*versionName='[^']+'" dist/badging.txt
+          grep -Eq "application: .*icon='[^']+'" dist/badging.txt
 
       - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
@@ -119,6 +124,7 @@ jobs:
             ${{ steps.build.outputs.path }}
             dist/build-report.txt
             dist/manifest-dump.txt
+            dist/badging.txt
           if-no-files-found: error
 
       - name: Upload APK back to release

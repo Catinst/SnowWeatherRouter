@@ -14,6 +14,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from axml_branding import Branding, extract_branding, patch_branding
+
 SIGNATURE_RE = re.compile(
     r"^META-INF/(?:MANIFEST\.MF|[^/]+\.(?:SF|RSA|DSA|EC))$", re.IGNORECASE
 )
@@ -101,7 +103,8 @@ def manifest_xml(
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <application
-        android:label="{label}"
+        android:label="@android:string/ok"
+        android:icon="@android:drawable/ic_dialog_info"
         android:name="android.app.Application"
         android:hasCode="false"
         android:hardwareAccelerated="true"
@@ -109,6 +112,7 @@ def manifest_xml(
         android:supportsRtl="true">
         <activity
             android:name="android.app.NativeActivity"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
@@ -279,6 +283,8 @@ def main() -> None:
     source_package, source_version_code, source_version_name = apk_metadata(
         aapt2, args.input_apk.resolve()
     )
+    with zipfile.ZipFile(args.input_apk.resolve(), "r") as source_archive:
+        source_branding = extract_branding(source_archive.read("AndroidManifest.xml"))
     output = (
         args.output.resolve()
         if args.output
@@ -302,7 +308,7 @@ def main() -> None:
         )
         router = (router_dir / "libSnowWeatherRouter.so").read_bytes()
         version_name = source_version_name + args.version_name_suffix
-        manifest = compile_manifest(
+        manifest_template = compile_manifest(
             aapt2,
             android_jar,
             manifest_xml(
@@ -313,6 +319,7 @@ def main() -> None:
             ),
             work,
         )
+        manifest, branding_report = patch_branding(manifest_template, source_branding)
         result = rewrite_apk(
             args.input_apk.resolve(),
             output,
@@ -336,6 +343,7 @@ def main() -> None:
             "router_sha256": hashlib.sha256(router).hexdigest(),
             "android_jar": str(android_jar),
             "aapt2": aapt2,
+            "branding": branding_report,
         }
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))

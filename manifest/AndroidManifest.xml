@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Reference template. scripts/build_apk.py compiles this shape with Android
+     placeholders, then patches the binary AXML back to the input APK's real
+     label/icon/theme resource IDs. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.miui.weather3"
     android:versionCode="180000231"
@@ -11,7 +14,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <application
-        android:label="Snow Weather"
+        android:label="@android:string/ok"
+        android:icon="@android:drawable/ic_dialog_info"
         android:name="android.app.Application"
         android:hasCode="false"
         android:hardwareAccelerated="true"
@@ -19,6 +23,7 @@
         android:supportsRtl="true">
         <activity
             android:name="android.app.NativeActivity"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"

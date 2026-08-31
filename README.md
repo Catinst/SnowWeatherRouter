@@ -14,6 +14,8 @@
 - 新增从 Rust 源码编译的 `libSnowWeatherRouter.so`；
 - 将 Manifest 改为 `android.app.NativeActivity`；
 - 将 `android.app.lib_name` 改为 `SnowWeatherRouter`；
+- 自动从输入 APK 的二进制 Manifest 恢复原多语言应用名、图标资源和启动主题；
+- 保留原版本并默认执行 `versionCode + 1`、`versionName + -Snow`；
 - 保留 Flutter AOT、资源与其他原厂 SO；
 - 对等长包名进行安全的 ASCII/UTF-16 原位替换；
 - 删除旧 APK 签名痕迹；

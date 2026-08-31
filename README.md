@@ -1,12 +1,10 @@
 # SnowWeatherRouter
 
-HyperOS Weather 原生路由器与可复现 APK 转换。
-
-私有仓库：<https://github.com/Catinst/SnowWeatherRouter>
+HyperOS Rust Weather 原生路由器与可复现 APK 转换。
 
 ## 设计
 
-本项目不再修改原来约 5 KiB 的 `libdatastore_shared_counter.so` 代码区。
+本项目不修改原来约 5 KiB 的 `libdatastore_shared_counter.so` 代码区。
 
 输出 APK 会：
 

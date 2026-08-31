@@ -112,3 +112,8 @@ GitHub source pushes do not build APKs: this repository's workflow runs only for
 
 For an explicitly isolated local experiment, `scripts/build_apk.py` accepts `--extra-native-libs-dir <dir>` and embeds every arm64 `.so` in that directory under `lib/arm64-v8a/`. The default Release Action does not pass this option, so source pushes and ordinary Action builds remain unchanged. Proprietary system libraries must never be committed to this repository.
 
+
+## Confirmed HyperOS Rust component root cause
+
+Provider 崩溃不是逐个组件问题，而是移除 hyperos.rustruntime.v3 后，Android 不再用 Rust runtime 接管任何组件，最终所有无 DEX 组件都会走 ClassLoader 失败。
+

@@ -110,8 +110,6 @@ def manifest_xml(
         android:hardwareAccelerated="true"
         android:extractNativeLibs="true"
         android:supportsRtl="true">
-        <uses-library android:name="hyperos.rustruntime.v3" android:required="true" />
-        <meta-data android:name="hyperos.app.rust_runtime_version" android:value="3.1.0" />
         <activity
             android:name="android.app.NativeActivity"
             android:theme="@android:style/Theme.Material.Light.NoActionBar"

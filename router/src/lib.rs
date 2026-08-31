@@ -17,14 +17,14 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v1\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v1\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v2\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v2\0";
 
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow full-source HyperOS router\0".len()] =
-    *b"Snow full-source HyperOS router\0";
+pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow full-source HyperOS router v2\0".len()] =
+    *b"Snow full-source HyperOS router v2\0";
 
 const ANDROID_LOG_INFO: c_int = 4;
 const ANDROID_LOG_WARN: c_int = 5;
@@ -63,6 +63,9 @@ const JSON_ZERO: &[u8] = b"[0]";
 const JSON_FALSE_STRING: &[u8] = b"[\"false\"]";
 const JSON_EMPTY_MAP: &[u8] = b"[{}]";
 const JSON_EMPTY_LIST: &[u8] = b"[[]]";
+const JSON_ZERO_CORNERS: &[u8] = b"[[0,0,0,0]]";
+const JSON_GLASS_UNSUPPORTED: &[u8] =
+    b"[{\"isSupportMaterial\":false,\"isSupportGlass\":false}]";
 const JSON_SHARED_OPEN: &[u8] = b"[\"SnowWeatherPrefs\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
@@ -529,7 +532,9 @@ unsafe extern "C" fn platform_message_callback(
     }
 
     if bytes_equal(channel, CHANNEL_SYSTEM_PROPERTIES) {
-        if json_method_is(payload, b"getString") {
+        if json_method_is(payload, b"getAll") {
+            reply(state, reply_id, JSON_EMPTY_MAP);
+        } else if json_method_is(payload, b"getString") {
             reply(state, reply_id, JSON_FALSE_STRING);
         } else if json_method_is(payload, b"getInt") || json_method_is(payload, b"getLong") {
             reply(state, reply_id, JSON_ZERO);
@@ -574,8 +579,11 @@ unsafe extern "C" fn platform_message_callback(
     }
 
     if bytes_equal(channel, CHANNEL_CONFIGURATION) {
-        if json_method_is(payload, b"getScreenCornerRadius") {
-            reply(state, reply_id, JSON_EMPTY_LIST);
+        if json_method_is(payload, b"roundedCorner")
+            || json_method_is(payload, b"getScreenCornerRadius")
+            || json_method_is(payload, b"getRoundedCorners")
+        {
+            reply(state, reply_id, JSON_ZERO_CORNERS);
         } else if json_method_is(payload, b"configuration")
             || json_method_is(payload, b"configurations")
         {
@@ -602,10 +610,25 @@ unsafe extern "C" fn platform_message_callback(
         return;
     }
 
-    if bytes_equal(channel, CHANNEL_HYPER_MATERIAL)
-        || bytes_equal(channel, CHANNEL_SYSTEM_NAVIGATION)
-    {
-        reply(state, reply_id, JSON_EMPTY_MAP);
+    if bytes_equal(channel, CHANNEL_HYPER_MATERIAL) {
+        if json_method_is(payload, b"getGlassCapability") {
+            reply(state, reply_id, JSON_GLASS_UNSUPPORTED);
+        } else if json_method_is(payload, b"getBackgroundBlurEnable")
+            || json_method_is(payload, b"getMaterialStyle")
+        {
+            reply(state, reply_id, JSON_ZERO);
+        } else {
+            reply(state, reply_id, JSON_NULL);
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_SYSTEM_NAVIGATION) {
+        if json_method_is(payload, b"getNavigationMode") {
+            reply(state, reply_id, b"[2]");
+        } else {
+            reply(state, reply_id, JSON_NULL);
+        }
         return;
     }
 

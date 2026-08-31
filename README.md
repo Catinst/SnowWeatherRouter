@@ -25,7 +25,7 @@
 
 - `SNOW_WEATHER_ROUTER_WATERMARK`
 - `SNOW_WEATHER_ROUTER_BUILD`
-- 文本：`SnowWeatherRouter|Snownight|v1`
+- 文本：`SnowWeatherRouter|Snownight|v2`
 
 ## 为什么默认不补 DEX
 

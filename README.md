@@ -114,4 +114,5 @@ For an explicitly isolated local experiment, `scripts/build_apk.py` accepts `--e
 ## Confirmed HyperOS Rust component root cause
 
 Provider 崩溃不是逐个组件问题，而是移除 hyperos.rustruntime.v3 后，Android 不再用 Rust runtime 接管任何组件，最终所有无 DEX 组件都会走 ClassLoader 失败。
-
+新系统：Rust 组件必须通过固定 MIUI 证书验证后才由 hyos_spawner 接管；
+旧系统：没有这套 Rust runtime，即使签名正确也无法运行；

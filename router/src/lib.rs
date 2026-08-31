@@ -17,14 +17,14 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v12\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v12\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v17-hybrid\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v17-hybrid\0";
 
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow full-source HyperOS router v12\0".len()] =
-    *b"Snow full-source HyperOS router v12\0";
+pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow hybrid DEX host router v17\0".len()] =
+    *b"Snow hybrid DEX host router v17\0";
 
 const ANDROID_LOG_INFO: c_int = 4;
 const ANDROID_LOG_WARN: c_int = 5;
@@ -54,6 +54,7 @@ const CHANNEL_SETTINGS: &[u8] = b"com.android.os.provider.settings.method.channe
 const CHANNEL_WEATHER_METHOD: &[u8] = b"weather_method_channel";
 const CHANNEL_WEATHER_BASIC: &[u8] = b"weather_channel";
 const CHANNEL_SHORTCUT: &[u8] = b"com.android.content.shortcut.method.channel";
+const CHANNEL_INTENT: &[u8] = b"com.android.content.intent.method.channel";
 
 const LIFECYCLE_RESUMED: &[u8] = b"AppLifecycleState.resumed";
 const LIFECYCLE_INACTIVE: &[u8] = b"AppLifecycleState.inactive";
@@ -65,6 +66,7 @@ const JSON_NULL: &[u8] = b"[null]";
 const JSON_TRUE: &[u8] = b"[true]";
 const JSON_FALSE: &[u8] = b"[false]";
 const JSON_ZERO: &[u8] = b"[0]";
+const JSON_MINUS_ONE: &[u8] = b"[-1]";
 const JSON_FALSE_STRING: &[u8] = b"[\"false\"]";
 const JSON_EMPTY_MAP: &[u8] = b"[{}]";
 const JSON_EMPTY_LIST: &[u8] = b"[[]]";
@@ -76,7 +78,7 @@ const JSON_SHARED_OPEN: &[u8] = b"[\"SnowWeatherPrefs\"]";
 const JSON_SHARED_APP_RUN_OPEN: &[u8] = b"[\"SnowWeatherAppRun\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
-const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v12\",\"versionCode\":180000242,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v17-hybrid\",\"versionCode\":180000247,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
 const JSON_CN: &[u8] = b"[\"cn\"]";
 const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
 
@@ -98,9 +100,6 @@ const ARG_AOT: &[u8] = b"--aot-shared-library-name=libapp.so";
 const ARG_ICU: &[u8] = b"--icu-symbol-prefix=_binary_icudtl_dat";
 const ARG_IMPELLER: &[u8] = b"--impeller-backend=vulkan";
 const ENTRYPOINT: &[u8] = b"main";
-const LIB_HYPER_APP_PUBLIC: &[u8] = b"libhyper_os_app_public.so\0";
-const RTLD_NOW: c_int = 2;
-const RTLD_GLOBAL: c_int = 0x100;
 
 #[repr(C)]
 pub struct ANativeActivityCallbacks {
@@ -148,11 +147,28 @@ pub struct ANativeWindow {
 }
 
 #[repr(C)]
+pub struct AInputQueue {
+    _opaque: [u8; 0],
+}
+
+#[repr(C)]
+pub struct AInputEvent {
+    _opaque: [u8; 0],
+}
+
+#[repr(C)]
+pub struct ALooper {
+    _opaque: [u8; 0],
+}
+
+#[repr(C)]
 struct RouterState {
     activity: *mut ANativeActivity,
     runtime: *mut c_void,
     holder: *mut c_void,
     window: *mut ANativeWindow,
+    input_queue: *mut AInputQueue,
+    input_looper: *mut ALooper,
     resumed: i32,
     initialized_callbacks: i32,
 }
@@ -164,6 +180,8 @@ impl RouterState {
             runtime: ptr::null_mut(),
             holder: ptr::null_mut(),
             window: ptr::null_mut(),
+            input_queue: ptr::null_mut(),
+            input_looper: ptr::null_mut(),
             resumed: 0,
             initialized_callbacks: 0,
         }
@@ -239,6 +257,9 @@ impl HyperViewportMetrics {
 static mut STATE: RouterState = RouterState::empty();
 static mut HYPER_CALLBACKS: [usize; 16] = [0; 16];
 static mut VIEWPORT_METRICS: HyperViewportMetrics = HyperViewportMetrics::empty();
+static mut USER_AGREED: i32 = 0;
+static mut LOCATION_PERMISSION_GRANTED: i32 = 0;
+
 static mut ENGINE_ARGS: [HyperString; 4] = [
     HyperString {
         ptr: ptr::null(),
@@ -262,8 +283,22 @@ unsafe extern "C" {
     static HYPER_FLUTTER_INTERFACE: u8;
     fn ANativeWindow_getWidth(window: *mut ANativeWindow) -> i32;
     fn ANativeWindow_getHeight(window: *mut ANativeWindow) -> i32;
+    fn ALooper_forThread() -> *mut ALooper;
+    fn ALooper_prepare(opts: c_int) -> *mut ALooper;
+    fn ALooper_acquire(looper: *mut ALooper);
+    fn ALooper_release(looper: *mut ALooper);
+    fn AInputQueue_attachLooper(
+        queue: *mut AInputQueue,
+        looper: *mut ALooper,
+        ident: c_int,
+        callback: Option<unsafe extern "C" fn(c_int, c_int, *mut c_void) -> c_int>,
+        data: *mut c_void,
+    );
+    fn AInputQueue_detachLooper(queue: *mut AInputQueue);
+    fn AInputQueue_getEvent(queue: *mut AInputQueue, event: *mut *mut AInputEvent) -> c_int;
+    fn AInputQueue_preDispatchEvent(queue: *mut AInputQueue, event: *mut AInputEvent) -> c_int;
+    fn AInputQueue_finishEvent(queue: *mut AInputQueue, event: *mut AInputEvent, handled: c_int);
     fn __android_log_write(priority: c_int, tag: *const c_char, text: *const c_char) -> c_int;
-    fn dlopen(filename: *const c_char, flags: c_int) -> *mut c_void;
     fn snow_runtime_create_call(
         function: *const c_void,
         version: usize,
@@ -331,6 +366,34 @@ snow_shell_launch_call:
 
 unsafe fn state_ptr() -> *mut RouterState {
     ptr::addr_of_mut!(STATE)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_miui_weather3_ActivityWeatherMain_nativeSetUserAgreement(
+    _: *mut c_void,
+    _: *mut c_void,
+    agreed: u8,
+) {
+    USER_AGREED = if agreed != 0 { 1 } else { 0 };
+    if USER_AGREED != 0 {
+        log_static(ANDROID_LOG_INFO, b"Snow user agreement accepted by CTA\0");
+    } else {
+        log_static(ANDROID_LOG_INFO, b"Snow user agreement pending\0");
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_miui_weather3_ActivityWeatherMain_nativeSetLocationPermission(
+    _: *mut c_void,
+    _: *mut c_void,
+    granted: u8,
+) {
+    LOCATION_PERMISSION_GRANTED = if granted != 0 { 1 } else { 0 };
+    if LOCATION_PERMISSION_GRANTED != 0 {
+        log_static(ANDROID_LOG_INFO, b"Snow location permission granted\0");
+    } else {
+        log_static(ANDROID_LOG_INFO, b"Snow location permission denied\0");
+    }
 }
 
 unsafe fn interface_entry(offset: usize) -> *const c_void {
@@ -665,7 +728,11 @@ unsafe extern "C" fn platform_message_callback(
     if bytes_equal(channel, CHANNEL_SHARED_APP_RUN) {
         match standard_method(payload) {
             Some(method) if method == b"reload" || method == b"getAll" => {
-                reply(state, reply_id, STANDARD_APP_RUN_TRUE_MAP)
+                if USER_AGREED != 0 {
+                    reply(state, reply_id, STANDARD_APP_RUN_TRUE_MAP);
+                } else {
+                    reply(state, reply_id, STANDARD_EMPTY_MAP);
+                }
             }
             _ => reply(state, reply_id, STANDARD_NULL),
         }
@@ -776,7 +843,11 @@ unsafe extern "C" fn platform_message_callback(
         } else if json_method_is(payload, b"get_network_country_iso") {
             reply(state, reply_id, JSON_CN);
         } else if json_method_is(payload, b"check_permission") {
-            reply(state, reply_id, JSON_ZERO);
+            if LOCATION_PERMISSION_GRANTED != 0 {
+                reply(state, reply_id, JSON_ZERO);
+            } else {
+                reply(state, reply_id, JSON_MINUS_ONE);
+            }
         } else {
             reply(state, reply_id, JSON_NULL);
         }
@@ -789,6 +860,20 @@ unsafe extern "C" fn platform_message_callback(
                 reply(state, reply_id, BASIC_APP_PATH)
             }
             _ => reply(state, reply_id, BASIC_NULL),
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_INTENT) {
+        if json_method_is(payload, b"startActivityForResult")
+            || json_method_is(payload, b"startActivity")
+        {
+            // The Java hybrid host owns Android activity launches. It starts the
+            // CTA dialog with requestCode=1007 and recreates this activity only
+            // after the real resultCode=1 acceptance has been persisted.
+            reply(state, reply_id, JSON_TRUE);
+        } else {
+            reply(state, reply_id, JSON_NULL);
         }
         return;
     }
@@ -914,15 +999,6 @@ unsafe fn update_window_size(state: *mut RouterState) {
 
 unsafe fn initialize_engine() {
     let state = state_ptr();
-    let preload = dlopen(
-        LIB_HYPER_APP_PUBLIC.as_ptr() as *const c_char,
-        RTLD_NOW | RTLD_GLOBAL,
-    );
-    if preload.is_null() {
-        log_static(ANDROID_LOG_WARN, b"Snow preload libhyper_os_app_public.so failed\0");
-    } else {
-        log_static(ANDROID_LOG_INFO, b"Snow preload libhyper_os_app_public.so ok\0");
-    }
     if !(*state).runtime.is_null() || (*state).activity.is_null() {
         return;
     }
@@ -1004,6 +1080,12 @@ unsafe extern "C" fn on_stop(_: *mut ANativeActivity) {
 unsafe extern "C" fn on_destroy(_: *mut ANativeActivity) {
     let state = state_ptr();
     send_lifecycle(LIFECYCLE_DETACHED);
+    if !(*state).input_queue.is_null() {
+        AInputQueue_detachLooper((*state).input_queue);
+    }
+    if !(*state).input_looper.is_null() {
+        ALooper_release((*state).input_looper);
+    }
     if !(*state).holder.is_null() {
         call_destroy_holder((*state).holder);
     }
@@ -1023,6 +1105,89 @@ unsafe extern "C" fn on_window_focus_changed(_: *mut ANativeActivity, focused: c
         }
     }
 }
+unsafe extern "C" fn input_queue_callback(
+    _: c_int,
+    _: c_int,
+    data: *mut c_void,
+) -> c_int {
+    let state = if data.is_null() {
+        state_ptr()
+    } else {
+        data as *mut RouterState
+    };
+    let queue = (*state).input_queue;
+    if queue.is_null() {
+        return 1;
+    }
+    loop {
+        let mut event: *mut AInputEvent = ptr::null_mut();
+        if AInputQueue_getEvent(queue, ptr::addr_of_mut!(event)) < 0 || event.is_null() {
+            break;
+        }
+        if AInputQueue_preDispatchEvent(queue, event) != 0 {
+            continue;
+        }
+        // v17 establishes a real native input consumer so InputDispatcher no
+        // longer times out. PointerDataPacket translation is the next layer;
+        // until then events are explicitly acknowledged instead of abandoned.
+        AInputQueue_finishEvent(queue, event, 1);
+    }
+    1
+}
+
+unsafe extern "C" fn on_input_queue_created(
+    _: *mut ANativeActivity,
+    queue: *mut c_void,
+) {
+    let state = state_ptr();
+    let queue = queue as *mut AInputQueue;
+    if queue.is_null() {
+        return;
+    }
+    if !(*state).input_queue.is_null() {
+        AInputQueue_detachLooper((*state).input_queue);
+    }
+    if !(*state).input_looper.is_null() {
+        ALooper_release((*state).input_looper);
+    }
+    let mut looper = ALooper_forThread();
+    if looper.is_null() {
+        looper = ALooper_prepare(1);
+    }
+    if looper.is_null() {
+        log_static(ANDROID_LOG_WARN, b"Snow input looper unavailable\0");
+        return;
+    }
+    ALooper_acquire(looper);
+    (*state).input_queue = queue;
+    (*state).input_looper = looper;
+    AInputQueue_attachLooper(
+        queue,
+        looper,
+        0,
+        Some(input_queue_callback),
+        state as *mut c_void,
+    );
+    log_static(ANDROID_LOG_INFO, b"Snow input queue attached\0");
+}
+
+unsafe extern "C" fn on_input_queue_destroyed(
+    _: *mut ANativeActivity,
+    queue: *mut c_void,
+) {
+    let state = state_ptr();
+    let queue = queue as *mut AInputQueue;
+    if !queue.is_null() {
+        AInputQueue_detachLooper(queue);
+    }
+    if !(*state).input_looper.is_null() {
+        ALooper_release((*state).input_looper);
+    }
+    (*state).input_queue = ptr::null_mut();
+    (*state).input_looper = ptr::null_mut();
+    log_static(ANDROID_LOG_INFO, b"Snow input queue detached\0");
+}
+
 unsafe extern "C" fn on_native_window_created(
     _: *mut ANativeActivity,
     window: *mut ANativeWindow,
@@ -1084,6 +1249,8 @@ pub unsafe extern "C" fn ANativeActivity_onCreate(
         (*callbacks).on_native_window_created = Some(on_native_window_created);
         (*callbacks).on_native_window_resized = Some(on_native_window_resized);
         (*callbacks).on_native_window_destroyed = Some(on_native_window_destroyed);
+        (*callbacks).on_input_queue_created = Some(on_input_queue_created);
+        (*callbacks).on_input_queue_destroyed = Some(on_input_queue_destroyed);
     }
 
     log_static(ANDROID_LOG_INFO, b"SnowWeatherRouter onCreate\0");

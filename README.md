@@ -47,7 +47,7 @@
 
 - Python 3.11+
 - `pip install -r requirements.txt`
-- Rust stable，安装 `aarch64-linux-android` target
+- Rust 1.98.0（由 `rust-toolchain.toml` 固定），安装 `aarch64-linux-android` target
 - Android SDK Build Tools 与任一 Android Platform（需 `aapt2` 和 `android.jar`）
 
 ```bash

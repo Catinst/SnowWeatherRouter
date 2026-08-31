@@ -44,8 +44,8 @@ jobs:
           python-version: '3.11'
           cache: pip
 
-      - name: Set up Rust Android target
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up pinned Rust Android target
+        uses: dtolnay/rust-toolchain@1.98.0
         with:
           targets: aarch64-linux-android
 
@@ -92,7 +92,13 @@ jobs:
           else
             output="${asset%.apk}-Snow-unsigned.apk"
           fi
-          python scripts/build_apk.py "input/$asset"             --output "dist/$output"             --sdk "$ANDROID_SDK_ROOT"             --target-package "$TARGET_PACKAGE"             | tee dist/build-report.txt
+          python scripts/build_apk.py "input/$asset" \
+            --output "dist/$output" \
+            --sdk "$ANDROID_SDK_ROOT" \
+            --aapt2 "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt2" \
+            --android-jar "$ANDROID_SDK_ROOT/platforms/android-36/android.jar" \
+            --target-package "$TARGET_PACKAGE" \
+            | tee dist/build-report.txt
           echo "name=$output" >> "$GITHUB_OUTPUT"
           echo "path=dist/$output" >> "$GITHUB_OUTPUT"
 
@@ -100,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          aapt2="$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name aapt2 | sort -V | tail -n 1)"
+          aapt2="$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt2"
           "$aapt2" dump xmltree --file AndroidManifest.xml '${{ steps.build.outputs.path }}'             | tee dist/manifest-dump.txt
           grep -q 'android.app.NativeActivity' dist/manifest-dump.txt
           grep -q 'SnowWeatherRouter' dist/manifest-dump.txt

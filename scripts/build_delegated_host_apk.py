@@ -29,6 +29,48 @@ def read_length16(data,offset):
  if v&0x8000:v=((v&0x7fff)<<16)|u16(data,offset);offset+=2
  return v,offset
 
+JAVA_ONLY_STARTUP_PROVIDERS={
+ 'com.miui.weather2.provider.DumpLogProvider',
+ 'androidx.startup.InitializationProvider',
+}
+
+def remove_named_manifest_elements(data: bytes, element_name: str, component_names: set[str]) -> tuple[bytes,list[str]]:
+ out=bytearray(data);pos=8;strings=[];remove=[];removed=[]
+ while pos<len(out):
+  typ=u16(out,pos);hs=u16(out,pos+2);size=u32(out,pos+4)
+  if typ==1:
+   count=u32(out,pos+8);flags=u32(out,pos+16);start=u32(out,pos+20);utf8=bool(flags&0x100);offs=[u32(out,pos+hs+i*4) for i in range(count)];strings=[]
+   for rel in offs:
+    p=pos+start+rel
+    if utf8:
+     def r8(q):
+      v=out[q];q+=1
+      if v&0x80:v=((v&0x7f)<<8)|out[q];q+=1
+      return v,q
+     _,p=r8(p);n,p=r8(p);strings.append(bytes(out[p:p+n]).decode('utf-8','replace'))
+    else:
+     n,p=read_length16(out,p);strings.append(bytes(out[p:p+n*2]).decode('utf-16le','replace'))
+  elif typ==RES_XML_START_ELEMENT_TYPE and strings:
+   ext=pos+hs;name_idx=u32(out,ext+4);tag=strings[name_idx];attr_start=u16(out,ext+8);attr_size=u16(out,ext+10);attr_count=u16(out,ext+12);attrs=ext+attr_start
+   if tag==element_name:
+    component=None
+    for i in range(attr_count):
+     ao=attrs+i*attr_size;attr_name_idx=u32(out,ao+4);raw=u32(out,ao+8)
+     attr_name=strings[attr_name_idx] if attr_name_idx<len(strings) else ''
+     if attr_name=='name' and raw!=NO_INDEX and raw<len(strings):component=strings[raw]
+    if component in component_names:
+     cursor=pos+size;depth=1
+     while cursor<len(out) and depth:
+      ct=u16(out,cursor);cs=u32(out,cursor+4)
+      if ct==RES_XML_START_ELEMENT_TYPE:depth+=1
+      elif ct==RES_XML_END_ELEMENT_TYPE:depth-=1
+      cursor+=cs
+     remove.append((pos,cursor));removed.append(component)
+  pos+=size
+ for a,b in reversed(remove):del out[a:b]
+ p32(out,4,len(out))
+ return bytes(out),removed
+
 def remove_required_rust_runtime_library(data: bytes) -> tuple[bytes, int]:
  out=bytearray(data);pos=8;strings=[];remove=[];hits=0
  while pos<len(out):
@@ -101,6 +143,8 @@ def rebuild_utf16_string_pool(data: bytes, replacements: dict[str,str]) -> tuple
 
 def patch_manifest(data:bytes,source_package:str,target_package:str,version_code:int,version_name:str):
  data,runtime_nodes_removed=remove_required_rust_runtime_library(data)
+ data,java_providers_removed=remove_named_manifest_elements(data,'provider',JAVA_ONLY_STARTUP_PROVIDERS)
+ if set(java_providers_removed)!=JAVA_ONLY_STARTUP_PROVIDERS:raise ValueError(f'java providers removed: {java_providers_removed}')
  replacements={ORIGINAL_HOST:ROUTER_ALIAS,**MANIFEST_STRING_REPLACEMENTS}
  data,string_hits=rebuild_utf16_string_pool(data,replacements)
  out=bytearray(data);old=source_package.encode('utf-16le');new=target_package.encode('utf-16le')
@@ -116,12 +160,12 @@ def patch_manifest(data:bytes,source_package:str,target_package:str,version_code
    if a:p32(out,a.data_offset,version_code);version_code_hits+=1
  if host_hits!=1:raise ValueError(f'expected one app lib name, got {host_hits}')
  if version_code_hits!=1:raise ValueError(f'versionCode hits {version_code_hits}')
- return bytes(out),{'package_hits':package_hits,'host_alias_hits':host_hits,'version_code_hits':version_code_hits,'version_name_hits':version_name_hits,'runtime_nodes_removed':runtime_nodes_removed,'authority_hits':authority_hits}
+ return bytes(out),{'package_hits':package_hits,'host_alias_hits':host_hits,'version_code_hits':version_code_hits,'version_name_hits':version_name_hits,'runtime_nodes_removed':runtime_nodes_removed,'authority_hits':authority_hits,'java_providers_removed':java_providers_removed}
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('input',type=Path);ap.add_argument('--router',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--source-package',default='com.miui.weather2');ap.add_argument('--target-package',default='com.miui.weather3');args=ap.parse_args()
  with zipfile.ZipFile(args.input) as src:
-  manifest,report=patch_manifest(src.read('AndroidManifest.xml'),args.source_package,args.target_package,180000244,'[IP]-R')
+  manifest,report=patch_manifest(src.read('AndroidManifest.xml'),args.source_package,args.target_package,180000245,'[IP]-R')
   router=args.router.read_bytes();args.output.parent.mkdir(parents=True,exist_ok=True)
   with zipfile.ZipFile(args.output,'w',allowZip64=True) as dst:
    names=[]

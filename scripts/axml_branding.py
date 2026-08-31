@@ -269,7 +269,11 @@ def extract_branding(data: bytes) -> Branding:
     )
 
 
-def patch_branding(data: bytes, branding: Branding) -> tuple[bytes, dict[str, object]]:
+def patch_branding(
+    data: bytes,
+    branding: Branding,
+    expected_launcher_activity: str = "android.app.NativeActivity",
+) -> tuple[bytes, dict[str, object]]:
     output = bytearray(data)
     replacements = {
         ANDROID_LABEL: (PLACEHOLDER_LABEL, branding.label_resource),
@@ -310,7 +314,7 @@ def patch_branding(data: bytes, branding: Branding) -> tuple[bytes, dict[str, ob
         label_resource=branding.label_resource,
         icon_resource=branding.icon_resource,
         theme_resource=branding.theme_resource,
-        launcher_activity="android.app.NativeActivity",
+        launcher_activity=expected_launcher_activity,
     ):
         raise ValueError(f"patched branding verification failed: {verified}")
     return bytes(output), {**branding.as_dict(), "patch_counts": counts}

@@ -936,6 +936,8 @@ unsafe extern "C" fn platform_message_callback(
             reply(state, reply_id, JSON_TRUE);
         } else if json_method_is(payload, b"get_network_country_iso") {
             reply(state, reply_id, JSON_CN);
+        } else if json_method_is(payload, b"get_network_info_is_connected") {
+            reply(state, reply_id, JSON_TRUE);
         } else if json_method_is(payload, b"check_permission") {
             if LOCATION_PERMISSION_GRANTED != 0 {
                 reply(state, reply_id, JSON_ZERO);

@@ -17,8 +17,8 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v24-local-route-location\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v24-local-route-location\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v25-surface-rebind-location\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v25-surface-rebind-location\0";
 
 #[no_mangle]
 #[used]
@@ -89,7 +89,7 @@ const JSON_SHARED_OPEN: &[u8] = b"[\"SnowWeatherPrefs\"]";
 const JSON_SHARED_APP_RUN_OPEN: &[u8] = b"[\"SnowWeatherAppRun\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
-const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v18-hybrid\",\"versionCode\":180000254,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v18-hybrid\",\"versionCode\":180000255,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
 const JSON_CN: &[u8] = b"[\"cn\"]";
 const JSON_LOCATION_TEST: &[u8] = b"[{\"location\":\"{\\\"mLatitude\\\":23.108,\\\"mLongitude\\\":113.265,\\\"mStreetName\\\":\\\"\\\",\\\"mCityName\\\":\\\"\\\",\\\"mAdminArea\\\":\\\"\\\",\\\"mSubLocality\\\":\\\"\\\",\\\"mCountryName\\\":\\\"China\\\",\\\"mErrorCode\\\":0,\\\"mErrorInfo\\\":\\\"\\\",\\\"mLocationType\\\":\\\"5\\\"}\"}]";
 const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
@@ -1283,10 +1283,12 @@ unsafe extern "C" fn on_native_window_destroyed(
     _: *mut ANativeWindow,
 ) {
     let state = state_ptr();
-    if !(*state).holder.is_null() {
-        call_surface_destroy((*state).holder);
-    }
+    // Android 14 may destroy/recreate the NativeActivity surface while the
+    // display is asleep. Do not synchronously notify Flutter here: the engine
+    // can still have raster/IO work queued against the old window. The next
+    // created-window callback rebinds the holder safely.
     (*state).window = ptr::null_mut();
+    log_static(ANDROID_LOG_INFO, b"Snow deferred surface destroy during rebind\0");
 }
 
 #[no_mangle]

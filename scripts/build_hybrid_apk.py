@@ -18,7 +18,7 @@ def manifest_xml(package,version_code,version_name):
  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
  <uses-permission android:name="android.permission.VIBRATE" />
- <application android:label="@android:string/ok" android:icon="@android:drawable/ic_dialog_info" android:name="android.app.Application" android:hasCode="true" android:hardwareAccelerated="true" android:extractNativeLibs="true" android:supportsRtl="true">
+ <application android:label="@android:string/ok" android:icon="@android:drawable/ic_dialog_info" android:name="{package}.WeatherApplication" android:hasCode="true" android:hardwareAccelerated="true" android:extractNativeLibs="true" android:supportsRtl="true" android:directBootAware="true" android:defaultToDeviceProtectedStorage="true">
   <activity android:name="{package}.ActivityWeatherMain" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:exported="true" android:launchMode="singleTask" android:screenOrientation="portrait" android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout|density|uiMode|fontScale|fontWeightAdjustment" android:hardwareAccelerated="true">
    <meta-data android:name="android.app.lib_name" android:value="SnowWeatherRouter" />
    <intent-filter>

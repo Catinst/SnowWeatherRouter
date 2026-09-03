@@ -45,7 +45,10 @@ def main() -> None:
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[1]
-    source = repo / "hybrid" / "src" / "com" / "miui" / "weather3" / "ActivityWeatherMain.java"
+    source_root = repo / "hybrid" / "src"
+    sources = sorted(source_root.rglob("*.java"))
+    if not sources:
+        raise SystemExit(f"no Java sources found under {source_root}")
     output = args.output_dir.resolve()
     classes = output / "classes"
     dex = output / "dex"
@@ -68,9 +71,11 @@ def main() -> None:
         str(android_jar),
         "-d",
         str(classes),
-        str(source),
+        *[str(path) for path in sources],
     ])
-    class_file = classes / "com" / "miui" / "weather3" / "ActivityWeatherMain.class"
+    class_files = sorted(classes.rglob("*.class"))
+    if not class_files:
+        raise SystemExit("javac produced no class files")
     run([
         str(d8),
         "--lib",
@@ -79,7 +84,7 @@ def main() -> None:
         str(args.min_api),
         "--output",
         str(dex),
-        str(class_file),
+        *[str(path) for path in class_files],
     ])
     print(f"output={dex / 'classes.dex'}")
 

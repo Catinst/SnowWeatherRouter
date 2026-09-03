@@ -1379,6 +1379,5 @@ pub unsafe extern "C" fn ANativeActivity_onCreate(
         (*callbacks).on_input_queue_destroyed = Some(on_input_queue_destroyed);
     }
 
-    log_static(ANDROID_LOG_INFO, b"SnowWeatherRouter onCreate\0");
-    initialize_engine();
+    log_static(ANDROID_LOG_INFO, b"SnowWeatherRouter onCreate; engine deferred to resume\0");
 }

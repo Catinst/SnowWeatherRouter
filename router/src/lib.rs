@@ -17,8 +17,8 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v30-startup-host\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v30-startup-host\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v31-package-info\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v31-package-info\0";
 
 #[no_mangle]
 #[used]
@@ -35,6 +35,7 @@ const CHANNEL_LIFECYCLE: &[u8] = b"flutter/lifecycle";
 const CHANNEL_NATIVE_READY: &[u8] = b"com.xiaomi.hyperos/native_ready";
 const CHANNEL_SYSTEM_PROPERTIES: &[u8] = b"com.android.os.system.properties.method.channel";
 const CHANNEL_PACKAGE_MANAGER: &[u8] = b"com.android.package.manager.method.channel";
+const CHANNEL_PACKAGE_INFO: &[u8] = b"dev.fluttercommunity.plus/package_info";
 const CHANNEL_SHARED_ROOT: &[u8] = b"hyperos/shared_preferences";
 const CHANNEL_SHARED_CHILD: &[u8] = b"SnowWeatherPrefs";
 const CHANNEL_SHARED_APP_RUN: &[u8] = b"SnowWeatherAppRun";
@@ -93,6 +94,21 @@ const JSON_SHARED_APP_RUN_OPEN: &[u8] = b"[\"SnowWeatherAppRun\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
 const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v18-hybrid\",\"versionCode\":180000255,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const STANDARD_PACKAGE_INFO: &[u8] = &[
+    0x00, 0x0d, 0x06,
+    0x07, 0x07, b'a', b'p', b'p', b'N', b'a', b'm', b'e',
+    0x07, 0x07, b'W', b'e', b'a', b't', b'h', b'e', b'r',
+    0x07, 0x0b, b'p', b'a', b'c', b'k', b'a', b'g', b'e', b'N', b'a', b'm', b'e',
+    0x07, 0x11, b'c', b'o', b'm', b'.', b'm', b'i', b'u', b'i', b'.', b'w', b'e', b'a', b't', b'h', b'e', b'r', b'3',
+    0x07, 0x07, b'v', b'e', b'r', b's', b'i', b'o', b'n',
+    0x07, 0x04, b'[', b'I', b'P', b']',
+    0x07, 0x0b, b'b', b'u', b'i', b'l', b'd', b'N', b'u', b'm', b'b', b'e', b'r',
+    0x07, 0x08, b'1', b'7', b'0', b'0', b'0', b'3', b'2', b'8',
+    0x07, 0x0e, b'b', b'u', b'i', b'l', b'd', b'S', b'i', b'g', b'n', b'a', b't', b'u', b'r', b'e',
+    0x07, 0x00,
+    0x07, 0x0e, b'i', b'n', b's', b't', b'a', b'l', b'l', b'e', b'r', b'S', b't', b'o', b'r', b'e',
+    0x07, 0x00,
+];
 const JSON_CN: &[u8] = b"[\"cn\"]";
 const JSON_ZH_CN: &[u8] = b"[\"zh-CN\"]";
 const JSON_CN_REGION: &[u8] = b"[\"CN\"]";
@@ -768,6 +784,17 @@ unsafe extern "C" fn platform_message_callback(
             reply(state, reply_id, PIGEON_EMPTY_MAP_REPLY);
         } else {
             reply(state, reply_id, PIGEON_NULL_REPLY);
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_PACKAGE_INFO) {
+        // package_info_plus uses a StandardMethodCodec MethodChannel. Its
+        // getAll result is a non-null Map consumed by MiPush initialization.
+        if contains(payload, b"getAll") {
+            reply(state, reply_id, STANDARD_PACKAGE_INFO);
+        } else {
+            reply(state, reply_id, STANDARD_NULL);
         }
         return;
     }

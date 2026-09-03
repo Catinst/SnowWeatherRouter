@@ -51,6 +51,17 @@ public final class ActivityWeatherMain extends NativeActivity {
         super.onCreate(state);
         if (!agreed && state == null) {
             getWindow().getDecorView().postDelayed(this::launchCta, 500L);
+        } else if (agreed && state == null) {
+            // Test-only replay for the headless device: the original host
+            // receives a CTA result before its first city-location attempt.
+            getWindow().getDecorView().postDelayed(() -> {
+                Log.i(TAG, "TEST_REPLAY_ACCEPTED_CTA=true; replaying resultCode=1");
+                nativeDeliverActivityResult(1);
+                nativeSetLocationPermission(hasForegroundLocation());
+                nativeDeliverPermissionResult(
+                        permissionResult(Manifest.permission.ACCESS_FINE_LOCATION),
+                        permissionResult(Manifest.permission.ACCESS_COARSE_LOCATION));
+            }, 2000L);
         }
     }
 

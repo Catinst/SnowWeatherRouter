@@ -16,8 +16,12 @@ public final class ActivityWeatherMain extends NativeActivity {
     private static final String KEY_APP_RUN = "app_run";
     private static final int REQUEST_CTA = 1007;
     private static final int REQUEST_LOCATION = 10000;
-    // Local-only diagnostic: let Dart create the pending CTA request, then
-    // convert the legacy system resultCode=-2 into an accepted result.
+    // Test profile only: keep CTA acceptance in this Activity. Launching the
+    // external SecurityCenter CTA destroys and recreates the NativeActivity
+    // Surface before the replacement router has a safe rebind state.
+    private static final boolean TEST_AUTO_ACCEPT_CTA = true;
+    // Retained for the production/fallback path where SecurityCenter returns
+    // the legacy resultCode=-2 for a non-system-signed clone.
     private static final boolean TEST_AUTO_ACCEPT_CTA_MINUS_TWO = true;
 
     static {
@@ -50,7 +54,16 @@ public final class ActivityWeatherMain extends NativeActivity {
         nativeSetLocationPermission(hasForegroundLocation());
         super.onCreate(state);
         if (!agreed && state == null) {
-            getWindow().getDecorView().postDelayed(this::launchCta, 500L);
+            if (TEST_AUTO_ACCEPT_CTA) {
+                // Wait until Flutter has installed its intent-channel listener,
+                // then accept without opening another Activity/Surface.
+                getWindow().getDecorView().postDelayed(() -> {
+                    Log.i(TAG, "TEST_AUTO_ACCEPT_CTA=true; accepting in-place");
+                    handleCtaAccept();
+                }, 2500L);
+            } else {
+                getWindow().getDecorView().postDelayed(this::launchCta, 500L);
+            }
         } else if (agreed && state == null) {
             // Test-only replay for the headless device: the original host
             // receives a CTA result before its first city-location attempt.

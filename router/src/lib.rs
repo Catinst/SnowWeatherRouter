@@ -115,8 +115,6 @@ const STANDARD_INT_TWO: &[u8] = &[0x00, 0x03, 0x02, 0x00, 0x00, 0x00];
 const STANDARD_INT_THREE: &[u8] = &[0x00, 0x03, 0x03, 0x00, 0x00, 0x00];
 const BASIC_NULL: &[u8] = &[0x00];
 const BASIC_APP_PATH: &[u8] = b"\x07\x21/data/user_de/0/com.miui.weather3";
-const STANDARD_TEMP_PATH: &[u8] = b"\x07\x2a/data/user/0/com.miui.weather3/cache";
-const STANDARD_SUPPORT_PATH: &[u8] = b"\x07\x2c/data/user_de/0/com.miui.weather3/files";
 
 const ARG_AOT: &[u8] = b"--aot-shared-library-name=libapp.so";
 const ARG_ICU: &[u8] = b"--icu-symbol-prefix=_binary_icudtl_dat";
@@ -1027,15 +1025,7 @@ unsafe extern "C" fn platform_message_callback(
     }
 
     if bytes_equal(channel, CHANNEL_PATH_PROVIDER) {
-        // PathProviderApi is a Pigeon BasicMessageChannel using a raw
-        // StandardMessageCodec value, not a MethodCodec envelope.
-        if contains(channel, b"getTemporaryPath") {
-            reply(state, reply_id, STANDARD_TEMP_PATH);
-        } else if contains(channel, b"getApplicationSupportPath") {
-            reply(state, reply_id, STANDARD_SUPPORT_PATH);
-        } else {
-            reply(state, reply_id, STANDARD_NULL);
-        }
+        reply(state, reply_id, STANDARD_NULL);
         return;
     }
 

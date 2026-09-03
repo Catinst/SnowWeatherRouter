@@ -83,7 +83,7 @@ const JSON_MINUS_ONE: &[u8] = b"[-1]";
 const JSON_FALSE_STRING: &[u8] = b"[\"false\"]";
 const JSON_EMPTY_MAP: &[u8] = b"[{}]";
 const JSON_EMPTY_LIST: &[u8] = b"[[]]";
-const JSON_EMPTY_JSON_LIST: &[u8] = b"[[]]";
+const JSON_EMPTY_STRING: &[u8] = b"[\"[]\"]";
 const JSON_ZERO_CORNERS: &[u8] = b"[[0,0,0,0]]";
 const JSON_GLASS_UNSUPPORTED: &[u8] =
     b"[{\"isSupportMaterial\":false,\"isSupportGlass\":false}]";
@@ -974,7 +974,7 @@ unsafe extern "C" fn platform_message_callback(
 
     if bytes_equal(channel, CHANNEL_SHORTCUT) {
         if json_method_is(payload, b"getDynamicShortcuts") {
-            reply(state, reply_id, JSON_EMPTY_JSON_LIST);
+            reply(state, reply_id, JSON_EMPTY_STRING);
         } else if json_method_is(payload, b"reportShortcutUsed")
             || json_method_is(payload, b"addDynamicShortcuts")
             || json_method_is(payload, b"updateShortcuts")

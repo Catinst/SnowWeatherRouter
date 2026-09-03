@@ -770,13 +770,6 @@ unsafe extern "C" fn platform_message_callback(
         return;
     }
 
-    // package_info_plus also uses a Pigeon BasicMessageChannel. The OS4
-    // reference returns null when no package-info record is available.
-    if contains(channel, b"dev.fluttercommunity.plus/package_info") {
-        reply(state, reply_id, PIGEON_NULL_REPLY);
-        return;
-    }
-
     if bytes_equal(channel, CHANNEL_NATIVE_READY) {
         reply(state, reply_id, JSON_TRUE);
         send_on_ready();

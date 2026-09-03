@@ -17,8 +17,8 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v18-hybrid\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v18-hybrid\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v24-local-route-location\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v24-local-route-location\0";
 
 #[no_mangle]
 #[used]
@@ -56,6 +56,9 @@ const CHANNEL_WEATHER_BASIC: &[u8] = b"weather_channel";
 const CHANNEL_SHORTCUT: &[u8] = b"com.android.content.shortcut.method.channel";
 const CHANNEL_INTENT: &[u8] = b"com.android.content.intent.method.channel";
 const CHANNEL_PERMISSION: &[u8] = b"com.android.permission.method.channel";
+const CHANNEL_XMS_LOCATION: &[u8] = b"xms_location";
+const CHANNEL_WEATHER_LOCATION: &[u8] = b"weather_location";
+const CHANNEL_FLUTTER_NAVIGATION: &[u8] = b"flutter/navigation";
 
 const LIFECYCLE_RESUMED: &[u8] = b"AppLifecycleState.resumed";
 const LIFECYCLE_INACTIVE: &[u8] = b"AppLifecycleState.inactive";
@@ -63,6 +66,7 @@ const LIFECYCLE_PAUSED: &[u8] = b"AppLifecycleState.paused";
 const LIFECYCLE_DETACHED: &[u8] = b"AppLifecycleState.detached";
 const ON_READY: &[u8] = b"{\"method\":\"onReady\",\"args\":null}";
 const CTA_ACTIVITY_RESULT_ACCEPTED: &[u8] = b"{\"method\":\"onActivityResult\",\"args\":{\"request_code\":1007,\"result_code\":1}}";
+const CTA_ROUTE_SEARCH_CITY: &[u8] = b"{\"method\":\"pushRoute\",\"args\":\"/searchCity\"}";
 const CTA_ACTIVITY_RESULT_DECLINED: &[u8] = b"{\"method\":\"onActivityResult\",\"args\":{\"request_code\":1007,\"result_code\":0}}";
 const PERMISSION_RESULT_BOTH_GRANTED: &[u8] = b"{\"method\":\"on_request_permission_result\",\"args\":{\"permissions\":[\"android.permission.ACCESS_FINE_LOCATION\",\"android.permission.ACCESS_COARSE_LOCATION\"],\"grant_results\":[0,0],\"request_code\":10000}}";
 const PERMISSION_RESULT_FINE_ONLY: &[u8] = b"{\"method\":\"on_request_permission_result\",\"args\":{\"permissions\":[\"android.permission.ACCESS_FINE_LOCATION\",\"android.permission.ACCESS_COARSE_LOCATION\"],\"grant_results\":[0,-1],\"request_code\":10000}}";
@@ -85,8 +89,9 @@ const JSON_SHARED_OPEN: &[u8] = b"[\"SnowWeatherPrefs\"]";
 const JSON_SHARED_APP_RUN_OPEN: &[u8] = b"[\"SnowWeatherAppRun\"]";
 const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
-const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v18-hybrid\",\"versionCode\":180000248,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
+const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v18-hybrid\",\"versionCode\":180000254,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
 const JSON_CN: &[u8] = b"[\"cn\"]";
+const JSON_LOCATION_TEST: &[u8] = b"[{\"location\":\"{\\\"mLatitude\\\":23.108,\\\"mLongitude\\\":113.265,\\\"mStreetName\\\":\\\"\\\",\\\"mCityName\\\":\\\"\\\",\\\"mAdminArea\\\":\\\"\\\",\\\"mSubLocality\\\":\\\"\\\",\\\"mCountryName\\\":\\\"China\\\",\\\"mErrorCode\\\":0,\\\"mErrorInfo\\\":\\\"\\\",\\\"mLocationType\\\":\\\"5\\\"}\"}]";
 const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
 
 const STANDARD_NULL: &[u8] = &[0x00, 0x00];
@@ -412,7 +417,8 @@ pub unsafe extern "C" fn Java_com_miui_weather3_ActivityWeatherMain_nativeDelive
     if result_code == 1 {
         USER_AGREED = 1;
         dispatch(CHANNEL_INTENT, CTA_ACTIVITY_RESULT_ACCEPTED);
-        log_static(ANDROID_LOG_INFO, b"Snow delivered CTA resultCode=1 to Flutter\0");
+        dispatch(CHANNEL_FLUTTER_NAVIGATION, CTA_ROUTE_SEARCH_CITY);
+        log_static(ANDROID_LOG_INFO, b"Snow delivered CTA resultCode=1 and search route to Flutter\0");
     } else {
         USER_AGREED = 0;
         dispatch(CHANNEL_INTENT, CTA_ACTIVITY_RESULT_DECLINED);
@@ -872,6 +878,16 @@ unsafe extern "C" fn platform_message_callback(
                 }
             }
             _ => reply(state, reply_id, STANDARD_NULL),
+        }
+        return;
+    }
+
+    if bytes_equal(channel, CHANNEL_XMS_LOCATION) || bytes_equal(channel, CHANNEL_WEATHER_LOCATION) {
+        if json_method_is(payload, b"locationFromAmap") || json_method_is(payload, b"locationFromNlp") || json_method_is(payload, b"locationFromWifi") || json_method_is(payload, b"locationFromPhone") {
+            log_static(ANDROID_LOG_INFO, b"Snow location channel served v24 result\0");
+            reply(state, reply_id, JSON_LOCATION_TEST);
+        } else {
+            reply(state, reply_id, JSON_NULL);
         }
         return;
     }

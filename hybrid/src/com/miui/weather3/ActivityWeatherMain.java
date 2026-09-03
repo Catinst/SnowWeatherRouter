@@ -16,6 +16,8 @@ public final class ActivityWeatherMain extends NativeActivity {
     private static final String KEY_APP_RUN = "app_run";
     private static final int REQUEST_CTA = 1007;
     private static final int REQUEST_LOCATION = 10000;
+    // Local-only diagnostic path requested for the headless Android 14 device.
+    private static final boolean TEST_FORCE_APP_RUN = true;
 
     static {
         System.loadLibrary("SnowWeatherRouter");
@@ -27,7 +29,8 @@ public final class ActivityWeatherMain extends NativeActivity {
     private static native void nativeDeliverPermissionResult(int fineResult, int coarseResult);
 
     private boolean isAgreed() {
-        return getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_APP_RUN, false);
+        return TEST_FORCE_APP_RUN
+                || getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_APP_RUN, false);
     }
 
     private int permissionResult(String permission) {
@@ -48,6 +51,17 @@ public final class ActivityWeatherMain extends NativeActivity {
         super.onCreate(state);
         if (!agreed && state == null) {
             getWindow().getDecorView().postDelayed(this::launchCta, 500L);
+        } else if (TEST_FORCE_APP_RUN) {
+            Log.i(TAG, "TEST_FORCE_APP_RUN=true; local CTA route simulation enabled");
+            getWindow().getDecorView().postDelayed(() -> {
+                nativeDeliverActivityResult(1);
+                if (hasForegroundLocation()) {
+                    nativeSetLocationPermission(true);
+                    nativeDeliverPermissionResult(
+                            permissionResult(Manifest.permission.ACCESS_FINE_LOCATION),
+                            permissionResult(Manifest.permission.ACCESS_COARSE_LOCATION));
+                }
+            }, 300L);
         }
     }
 

@@ -17,8 +17,8 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v25-surface-rebind-location\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v25-surface-rebind-location\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v26-set-locales-location\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v26-set-locales-location\0";
 
 #[no_mangle]
 #[used]
@@ -274,6 +274,14 @@ static mut VIEWPORT_METRICS: HyperViewportMetrics = HyperViewportMetrics::empty(
 static mut USER_AGREED: i32 = 0;
 static mut LOCATION_PERMISSION_GRANTED: i32 = 0;
 
+static mut ENGINE_LOCALES: [HyperString; 5] = [
+    HyperString { ptr: b"zh".as_ptr(), len: 2 },
+    HyperString { ptr: b"CN".as_ptr(), len: 2 },
+    HyperString { ptr: b"".as_ptr(), len: 0 },
+    HyperString { ptr: b"".as_ptr(), len: 0 },
+    HyperString { ptr: b"".as_ptr(), len: 0 },
+];
+
 static mut ENGINE_ARGS: [HyperString; 4] = [
     HyperString {
         ptr: ptr::null(),
@@ -504,6 +512,12 @@ unsafe fn call_reply(
     type Function = unsafe extern "C" fn(*mut c_void, *const u8, usize, usize);
     let function: Function = mem::transmute(interface_entry(0x78));
     function(holder, payload, payload_len, reply_id);
+}
+
+unsafe fn call_set_locales(holder: *mut c_void) {
+    type Function = unsafe extern "C" fn(*mut c_void, *const HyperString, usize);
+    let function: Function = mem::transmute(interface_entry(0x238));
+    function(holder, ptr::addr_of!(ENGINE_LOCALES) as *const HyperString, 5);
 }
 
 unsafe fn call_set_viewport_metrics(holder: *mut c_void, metrics: *const HyperViewportMetrics) {
@@ -1110,6 +1124,11 @@ unsafe fn initialize_engine() {
         log_static(ANDROID_LOG_WARN, b"create_shell_holder failed\0");
         return;
     }
+
+    // The original OS4 host sets locales before shell_holder_launch. Without
+    // this, the Flutter side observes und/null and selects ar_eg.
+    call_set_locales(holder);
+    log_static(ANDROID_LOG_INFO, b"Snow locales set zh-CN\0");
 
     let launch_function = interface_entry(0x58);
     snow_shell_launch_call(

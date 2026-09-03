@@ -17,8 +17,8 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v26-set-locales-location\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v26-set-locales-location\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v27-dedupe-surface\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v27-dedupe-surface\0";
 
 #[no_mangle]
 #[used]
@@ -1317,11 +1317,16 @@ unsafe extern "C" fn on_native_window_created(
     window: *mut ANativeWindow,
 ) {
     let state = state_ptr();
+    // initialize_engine() binds the first window itself. Only an already
+    // initialized holder needs an explicit rebind for a recreated window.
+    let holder_was_ready = !(*state).holder.is_null();
     (*state).window = window;
     initialize_engine();
-    if !(*state).holder.is_null() && !window.is_null() {
+    if holder_was_ready && !(*state).holder.is_null() && !window.is_null() {
         call_surface_create((*state).holder, window);
         update_window_size(state);
+    } else if !holder_was_ready {
+        log_static(ANDROID_LOG_INFO, b"Snow skipped duplicate initial surface bind\0");
     }
     if (*state).resumed != 0 {
         send_lifecycle(LIFECYCLE_RESUMED);

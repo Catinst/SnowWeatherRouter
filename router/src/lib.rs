@@ -99,6 +99,9 @@ const JSON_LOCATION_TEST: &[u8] = br##"["{\"mLatitude\":23.108,\"mLongitude\":11
 const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
 
 const STANDARD_NULL: &[u8] = &[0x00, 0x00];
+const PIGEON_NULL_REPLY: &[u8] = &[0x0c, 0x01, 0x00];
+const PIGEON_EMPTY_MAP_REPLY: &[u8] = &[0x0c, 0x01, 0x0d, 0x00];
+const PIGEON_SHARED_PREFS_PREFIX: &[u8] = b"dev.flutter.pigeon.shared_preferences_android.SharedPreferencesApi.";
 const STANDARD_TRUE: &[u8] = &[0x00, 0x01];
 const STANDARD_FALSE: &[u8] = &[0x00, 0x02];
 const STANDARD_EMPTY_MAP: &[u8] = &[0x00, 0x0d, 0x00];
@@ -755,6 +758,17 @@ unsafe extern "C" fn platform_message_callback(
         slice::from_raw_parts(payload_ptr, payload_len)
     };
     log_platform_message(channel, payload);
+
+    // Pigeon SharedPreferencesApi uses a BasicMessageChannel with a
+    // StandardMessageCodec list reply, not a MethodCodec envelope.
+    if contains(channel, PIGEON_SHARED_PREFS_PREFIX) {
+        if contains(channel, b".getAll") {
+            reply(state, reply_id, PIGEON_EMPTY_MAP_REPLY);
+        } else {
+            reply(state, reply_id, PIGEON_NULL_REPLY);
+        }
+        return;
+    }
 
     if bytes_equal(channel, CHANNEL_NATIVE_READY) {
         reply(state, reply_id, JSON_TRUE);

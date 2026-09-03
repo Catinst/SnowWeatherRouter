@@ -91,6 +91,8 @@ const JSON_DEVICE_FLAGSHIP: &[u8] =
     b"[{\"cpu_level\":3,\"gpu_level\":3,\"ram_level\":3}]";
 const JSON_PACKAGE_INFO: &[u8] = b"[{\"versionName\":\"[IP]-R-Snow-v18-hybrid\",\"versionCode\":180000255,\"lastUpdateTime\":0,\"applicationInfo\":{\"flags\":0,\"enabled\":true}}]";
 const JSON_CN: &[u8] = b"[\"cn\"]";
+const JSON_ZH_CN: &[u8] = b"[\"zh-CN\"]";
+const JSON_CN_REGION: &[u8] = b"[\"CN\"]";
 const JSON_LOCATION_TEST: &[u8] = b"[\"{\\\"mLatitude\\\":23.108,\\\"mLongitude\\\":113.265,\\\"mStreetName\\\":\\\"\\\",\\\"mCityName\\\":\\\"\\\",\\\"mAdminArea\\\":\\\"\\\",\\\"mSubLocality\\\":\\\"\\\",\\\"mCountryName\\\":\\\"China\\\",\\\"mErrorCode\\\":0,\\\"mErrorInfo\\\":\\\"\\\",\\\"mLocationType\\\":\\\"5\\\"}"\"]";
 const JSON_CONFIGURATION: &[u8] = b"[{\"screen_layout\":0,\"orientation\":1,\"color_mode\":0,\"screen_type\":0,\"screen_width_dp\":393,\"screen_height_dp\":873,\"smallest_screen_width_dp\":393,\"density_dpi\":440,\"display_id\":0,\"display_name\":\"Built-in Screen\",\"display_logical_density_dpi\":440,\"display_shape_width\":1080,\"display_shape_height\":2400,\"display_cutout\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"bounding_rect_left\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_top\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_right\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0},\"bounding_rect_bottom\":{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0}},\"window_bounds\":{\"left\":0,\"top\":0,\"right\":1080,\"bottom\":2400},\"is_multi_window\":false,\"dm_width_pixels\":1080,\"dm_height_pixels\":2400,\"dm_density\":2.75,\"dm_density_dpi\":440,\"dm_scaled_density\":2.75,\"dm_x_dpi\":440,\"dm_y_dpi\":440}]";
 
@@ -752,7 +754,16 @@ unsafe extern "C" fn platform_message_callback(
         if json_method_is(payload, b"getAll") {
             reply(state, reply_id, JSON_EMPTY_MAP);
         } else if json_method_is(payload, b"getString") {
-            reply(state, reply_id, JSON_FALSE_STRING);
+            if contains(payload, b"ro.miui.region") || contains(payload, b"ro.product.country") {
+                reply(state, reply_id, JSON_CN_REGION);
+            } else if contains(payload, b"persist.sys.locale")
+                || contains(payload, b"ro.product.locale")
+                || contains(payload, b"ro.product.locale.language")
+            {
+                reply(state, reply_id, JSON_ZH_CN);
+            } else {
+                reply(state, reply_id, JSON_FALSE_STRING);
+            }
         } else if json_method_is(payload, b"getInt") || json_method_is(payload, b"getLong") {
             reply(state, reply_id, JSON_ZERO);
         } else if json_method_is(payload, b"getBool") || json_method_is(payload, b"getBoolean") {

@@ -115,6 +115,7 @@ const STANDARD_INT_TWO: &[u8] = &[0x00, 0x03, 0x02, 0x00, 0x00, 0x00];
 const STANDARD_INT_THREE: &[u8] = &[0x00, 0x03, 0x03, 0x00, 0x00, 0x00];
 const BASIC_NULL: &[u8] = &[0x00];
 const BASIC_APP_PATH: &[u8] = b"\x07\x21/data/user_de/0/com.miui.weather3";
+const JSON_APP_COLOR_MODE: &[u8] = b"[0]";
 
 const ARG_AOT: &[u8] = b"--aot-shared-library-name=libapp.so";
 const ARG_ICU: &[u8] = b"--icu-symbol-prefix=_binary_icudtl_dat";
@@ -950,6 +951,8 @@ unsafe extern "C" fn platform_message_callback(
             reply(state, reply_id, JSON_TRUE);
         } else if json_method_is(payload, b"get_network_country_iso") {
             reply(state, reply_id, JSON_CN);
+        } else if json_method_is(payload, b"get_color_mode") {
+            reply(state, reply_id, JSON_APP_COLOR_MODE);
         } else if json_method_is(payload, b"get_network_info_is_connected") {
             reply(state, reply_id, JSON_TRUE);
         } else if json_method_is(payload, b"check_permission") {
@@ -1011,6 +1014,7 @@ unsafe extern "C" fn platform_message_callback(
     if bytes_equal(channel, CHANNEL_SYSTEM_BRIDGE) {
         match standard_method(payload) {
             Some(method) if method == b"is_user_unlocked" => reply(state, reply_id, STANDARD_TRUE),
+            Some(method) if method == b"get_files_dir" => reply(state, reply_id, BASIC_APP_PATH),
             _ => reply(state, reply_id, STANDARD_NULL),
         }
         return;

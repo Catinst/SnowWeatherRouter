@@ -77,6 +77,8 @@ const JSON_NULL: &[u8] = b"[null]";
 const JSON_TRUE: &[u8] = b"[true]";
 const JSON_FALSE: &[u8] = b"[false]";
 const JSON_ZERO: &[u8] = b"[0]";
+const JSON_SIX: &[u8] = b"[6]";
+const JSON_2025: &[u8] = b"[2025]";
 const JSON_MINUS_ONE: &[u8] = b"[-1]";
 const JSON_FALSE_STRING: &[u8] = b"[\"false\"]";
 const JSON_EMPTY_MAP: &[u8] = b"[{}]";
@@ -924,10 +926,10 @@ unsafe extern "C" fn platform_message_callback(
     }
 
     if bytes_equal(channel, CHANNEL_WEATHER_METHOD) {
-        if json_method_is(payload, b"get_device_com_level")
-            || json_method_is(payload, b"get_device_com_version")
-        {
-            reply(state, reply_id, b"[3]");
+        if json_method_is(payload, b"get_device_com_level") {
+            reply(state, reply_id, JSON_SIX);
+        } else if json_method_is(payload, b"get_device_com_version") {
+            reply(state, reply_id, JSON_2025);
         } else if json_method_is(payload, b"get_job_is_working") {
             reply(state, reply_id, JSON_FALSE);
         } else if json_method_is(payload, b"requestScheduleTask") {

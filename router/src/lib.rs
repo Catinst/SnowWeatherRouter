@@ -17,8 +17,8 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v27-dedupe-surface\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v27-dedupe-surface\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v30-startup-host\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v30-startup-host\0";
 
 #[no_mangle]
 #[used]
@@ -81,6 +81,7 @@ const JSON_SIX: &[u8] = b"[6]";
 const JSON_2025: &[u8] = b"[2025]";
 const JSON_MINUS_ONE: &[u8] = b"[-1]";
 const JSON_FALSE_STRING: &[u8] = b"[\"false\"]";
+const JSON_EMPTY_TEXT: &[u8] = b"[\"\"]";
 const JSON_EMPTY_MAP: &[u8] = b"[{}]";
 const JSON_EMPTY_LIST: &[u8] = b"[[]]";
 const JSON_EMPTY_STRING: &[u8] = b"[\"[]\"]";
@@ -800,6 +801,10 @@ unsafe extern "C" fn platform_message_callback(
             reply(state, reply_id, JSON_ZERO);
         } else if json_method_is(payload, b"getBool") || json_method_is(payload, b"getBoolean") {
             reply(state, reply_id, JSON_FALSE);
+        } else if json_method_is(payload, b"get") {
+            // The OS3 properties bridge returns the caller's String default
+            // for unknown keys such as ro.miui.restrict_imei_p.
+            reply(state, reply_id, JSON_EMPTY_TEXT);
         } else {
             reply(state, reply_id, JSON_NULL);
         }
@@ -959,6 +964,10 @@ unsafe extern "C" fn platform_message_callback(
             } else {
                 reply(state, reply_id, JSON_MINUS_ONE);
             }
+        } else if json_method_is(payload, b"request_permission") {
+            // Java owns the actual permission dialog; true means the request
+            // was accepted by the host and its result will arrive asynchronously.
+            reply(state, reply_id, JSON_TRUE);
         } else if json_method_is(payload, b"send_broadcast")
             || json_method_is(payload, b"update_cta_result")
             || json_method_is(payload, b"track_normal_event")

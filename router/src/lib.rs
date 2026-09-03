@@ -115,7 +115,7 @@ const STANDARD_INT_TWO: &[u8] = &[0x00, 0x03, 0x02, 0x00, 0x00, 0x00];
 const STANDARD_INT_THREE: &[u8] = &[0x00, 0x03, 0x03, 0x00, 0x00, 0x00];
 const BASIC_NULL: &[u8] = &[0x00];
 const BASIC_APP_PATH: &[u8] = b"\x07\x21/data/user_de/0/com.miui.weather3";
-const STANDARD_FILES_DIR: &[u8] = b"\x07\x2a/data/user/0/com.miui.weather3/files";
+const STANDARD_FILES_DIR: &[u8] = b"\x00\x07\x24/data/user/0/com.miui.weather3/files";
 
 const ARG_AOT: &[u8] = b"--aot-shared-library-name=libapp.so";
 const ARG_ICU: &[u8] = b"--icu-symbol-prefix=_binary_icudtl_dat";

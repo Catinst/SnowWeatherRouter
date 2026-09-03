@@ -107,6 +107,7 @@ const STANDARD_APP_RUN_TRUE_MAP: &[u8] = &[
 ];
 const STANDARD_INT_ZERO: &[u8] = &[0x00, 0x03, 0x00, 0x00, 0x00, 0x00];
 const STANDARD_INT_TWO: &[u8] = &[0x00, 0x03, 0x02, 0x00, 0x00, 0x00];
+const STANDARD_INT_THREE: &[u8] = &[0x00, 0x03, 0x03, 0x00, 0x00, 0x00];
 const BASIC_NULL: &[u8] = &[0x00];
 const BASIC_APP_PATH: &[u8] = b"\x07\x21/data/user_de/0/com.miui.weather3";
 
@@ -898,6 +899,11 @@ unsafe extern "C" fn platform_message_callback(
             Some(method) if method == b"getLong" => {
                 if contains(payload, b"navigation_mode") {
                     reply(state, reply_id, STANDARD_INT_TWO);
+                } else if contains(payload, b"location_mode") {
+                    // Android reports secure.location_mode=3 when location is
+                    // enabled; the original weather app uses this before
+                    // entering LocationDataManager::strategy2.
+                    reply(state, reply_id, STANDARD_INT_THREE);
                 } else {
                     reply(state, reply_id, STANDARD_INT_ZERO);
                 }

@@ -944,6 +944,12 @@ unsafe extern "C" fn platform_message_callback(
             } else {
                 reply(state, reply_id, JSON_MINUS_ONE);
             }
+        } else if json_method_is(payload, b"send_broadcast")
+            || json_method_is(payload, b"update_cta_result")
+            || json_method_is(payload, b"track_normal_event")
+            || json_method_is(payload, b"track_page_event")
+        {
+            reply(state, reply_id, JSON_TRUE);
         } else {
             reply(state, reply_id, JSON_NULL);
         }

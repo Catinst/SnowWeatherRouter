@@ -17,8 +17,8 @@ fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
 #[no_mangle]
 #[used]
 #[link_section = ".rodata.snow"]
-pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v31-package-info\0".len()] =
-    *b"SnowWeatherRouter|Snownight|v31-package-info\0";
+pub static SNOW_WEATHER_ROUTER_WATERMARK: [u8; b"SnowWeatherRouter|Snownight|v33-window-touch\0".len()] =
+    *b"SnowWeatherRouter|Snownight|v33-window-touch\0";
 
 #[no_mangle]
 #[used]
@@ -29,6 +29,20 @@ pub static SNOW_WEATHER_ROUTER_BUILD: [u8; b"Snow hybrid CTA callback router v18
 const ANDROID_LOG_INFO: c_int = 4;
 const ANDROID_LOG_WARN: c_int = 5;
 const LOG_TAG: &[u8] = b"SnowWeatherRouter\0";
+
+const AINPUT_EVENT_TYPE_MOTION: c_int = 2;
+const AMOTION_EVENT_ACTION_MASK: c_int = 0xff;
+const AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT: u32 = 8;
+const AMOTION_EVENT_ACTION_POINTER_INDEX_MASK: c_int = 0xff;
+const AMOTION_EVENT_ACTION_DOWN: c_int = 0;
+const AMOTION_EVENT_ACTION_UP: c_int = 1;
+const AMOTION_EVENT_ACTION_MOVE: c_int = 2;
+const AMOTION_EVENT_ACTION_CANCEL: c_int = 3;
+const AMOTION_EVENT_ACTION_POINTER_DOWN: c_int = 5;
+const AMOTION_EVENT_ACTION_POINTER_UP: c_int = 6;
+const POINTER_DATA_FIELD_COUNT: usize = 36;
+const POINTER_DATA_BYTES: usize = POINTER_DATA_FIELD_COUNT * 8;
+const MAX_POINTERS_PER_EVENT: usize = 16;
 const EMPTY_CSTR: &[u8] = b"\0";
 
 const CHANNEL_LIFECYCLE: &[u8] = b"flutter/lifecycle";
@@ -344,6 +358,18 @@ unsafe extern "C" {
     fn AInputQueue_getEvent(queue: *mut AInputQueue, event: *mut *mut AInputEvent) -> c_int;
     fn AInputQueue_preDispatchEvent(queue: *mut AInputQueue, event: *mut AInputEvent) -> c_int;
     fn AInputQueue_finishEvent(queue: *mut AInputQueue, event: *mut AInputEvent, handled: c_int);
+    fn AInputEvent_getType(event: *const AInputEvent) -> c_int;
+    fn AMotionEvent_getAction(event: *const AInputEvent) -> c_int;
+    fn AMotionEvent_getPointerCount(event: *const AInputEvent) -> usize;
+    fn AMotionEvent_getPointerId(event: *const AInputEvent, pointer_index: usize) -> c_int;
+    fn AMotionEvent_getX(event: *const AInputEvent, pointer_index: usize) -> f32;
+    fn AMotionEvent_getY(event: *const AInputEvent, pointer_index: usize) -> f32;
+    fn AMotionEvent_getEventTime(event: *const AInputEvent) -> i64;
+    fn AMotionEvent_getPressure(event: *const AInputEvent, pointer_index: usize) -> f32;
+    fn AMotionEvent_getSize(event: *const AInputEvent, pointer_index: usize) -> f32;
+    fn AMotionEvent_getToolMajor(event: *const AInputEvent, pointer_index: usize) -> f32;
+    fn AMotionEvent_getToolMinor(event: *const AInputEvent, pointer_index: usize) -> f32;
+    fn AMotionEvent_getOrientation(event: *const AInputEvent, pointer_index: usize) -> f32;
     fn __android_log_write(priority: c_int, tag: *const c_char, text: *const c_char) -> c_int;
     fn snow_runtime_create_call(
         function: *const c_void,
@@ -525,6 +551,20 @@ unsafe fn call_dispatch(
     );
     let function: Function = mem::transmute(interface_entry(0x60));
     function(holder, channel, channel_len, payload, payload_len, 0);
+}
+
+unsafe fn call_dispatch_window_pointer_data_packet(
+    holder: *mut c_void,
+    window_id: i64,
+    packet: *const u8,
+    packet_len: usize,
+) {
+    if holder.is_null() || packet.is_null() || packet_len == 0 {
+        return;
+    }
+    type Function = unsafe extern "C" fn(*mut c_void, i64, *const u8, c_int);
+    let function: Function = mem::transmute(interface_entry(0x1a0));
+    function(holder, window_id, packet, packet_len as c_int);
 }
 
 unsafe fn call_reply(
@@ -1267,6 +1307,135 @@ unsafe extern "C" fn on_window_focus_changed(_: *mut ANativeActivity, focused: c
         }
     }
 }
+struct PointerPacket {
+    bytes: [u8; POINTER_DATA_BYTES * MAX_POINTERS_PER_EVENT],
+    len: usize,
+}
+
+impl PointerPacket {
+    const fn new() -> Self {
+        Self {
+            bytes: [0; POINTER_DATA_BYTES * MAX_POINTERS_PER_EVENT],
+            len: 0,
+        }
+    }
+
+    fn put_i64(&mut self, value: i64) {
+        let bytes = value.to_le_bytes();
+        let end = self.len + bytes.len();
+        if end <= self.bytes.len() {
+            self.bytes[self.len..end].copy_from_slice(&bytes);
+            self.len = end;
+        }
+    }
+
+    fn put_f64(&mut self, value: f64) {
+        self.put_i64(value.to_bits() as i64);
+    }
+}
+
+unsafe fn append_pointer_data(
+    event: *const AInputEvent,
+    pointer_index: usize,
+    pointer_change: i64,
+    platform_data: i64,
+    packet: &mut PointerPacket,
+) {
+    // Android NDK event time is nanoseconds; Flutter stores microseconds.
+    let timestamp_us = AMotionEvent_getEventTime(event) / 1_000;
+    let pointer_id = AMotionEvent_getPointerId(event, pointer_index) as i64;
+
+    // Flutter 3.10 PointerData is 36 little-endian 64-bit fields.
+    packet.put_i64(0); // embedder_id
+    packet.put_i64(timestamp_us); // time_stamp
+    packet.put_i64(pointer_change); // change
+    packet.put_i64(0); // kind: touch
+    packet.put_i64(0); // signal_kind: none
+    packet.put_i64(pointer_id); // device
+    packet.put_i64(0); // pointer_identifier
+    packet.put_f64(AMotionEvent_getX(event, pointer_index) as f64); // physical_x
+    packet.put_f64(AMotionEvent_getY(event, pointer_index) as f64); // physical_y
+    packet.put_f64(0.0); // physical_delta_x
+    packet.put_f64(0.0); // physical_delta_y
+    packet.put_i64(0); // buttons
+    packet.put_i64(0); // obscured
+    packet.put_i64(0); // synthesized
+    packet.put_f64(AMotionEvent_getPressure(event, pointer_index) as f64); // pressure
+    packet.put_f64(0.0); // pressure_min
+    packet.put_f64(1.0); // pressure_max
+    packet.put_f64(0.0); // distance
+    packet.put_f64(0.0); // distance_max
+    packet.put_f64(AMotionEvent_getSize(event, pointer_index) as f64); // size
+    packet.put_f64(AMotionEvent_getToolMajor(event, pointer_index) as f64); // radius_major
+    packet.put_f64(AMotionEvent_getToolMinor(event, pointer_index) as f64); // radius_minor
+    packet.put_f64(0.0); // radius_min
+    packet.put_f64(0.0); // radius_max
+    packet.put_f64(AMotionEvent_getOrientation(event, pointer_index) as f64); // orientation
+    packet.put_f64(0.0); // tilt
+    packet.put_i64(platform_data); // platformData
+    packet.put_f64(0.0); // scroll_delta_x
+    packet.put_f64(0.0); // scroll_delta_y
+    packet.put_f64(0.0); // pan_x
+    packet.put_f64(0.0); // pan_y
+    packet.put_f64(0.0); // pan_delta_x
+    packet.put_f64(0.0); // pan_delta_y
+    packet.put_f64(1.0); // scale
+    packet.put_f64(0.0); // rotation
+    packet.put_i64(0); // view_id
+}
+
+unsafe fn dispatch_motion_event(state: *mut RouterState, event: *mut AInputEvent) {
+    if (*state).holder.is_null()
+        || event.is_null()
+        || AInputEvent_getType(event) != AINPUT_EVENT_TYPE_MOTION
+    {
+        return;
+    }
+    let action = AMotionEvent_getAction(event);
+    let masked_action = action & AMOTION_EVENT_ACTION_MASK;
+    let action_index =
+        ((action as u32 >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
+            & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK as u32) as usize;
+    let pointer_count = core::cmp::min(
+        AMotionEvent_getPointerCount(event),
+        MAX_POINTERS_PER_EVENT,
+    );
+    if pointer_count == 0 {
+        return;
+    }
+    let pointer_index = if action_index < pointer_count { action_index } else { 0 };
+    let mut packet = PointerPacket::new();
+    match masked_action {
+        AMOTION_EVENT_ACTION_DOWN | AMOTION_EVENT_ACTION_POINTER_DOWN => {
+            append_pointer_data(event, pointer_index, 4, 0, &mut packet);
+        }
+        AMOTION_EVENT_ACTION_MOVE => {
+            append_pointer_data(event, 0, 5, 0, &mut packet);
+        }
+        AMOTION_EVENT_ACTION_UP | AMOTION_EVENT_ACTION_POINTER_UP => {
+            append_pointer_data(event, pointer_index, 6, 0, &mut packet);
+        }
+        AMOTION_EVENT_ACTION_CANCEL => {
+            append_pointer_data(event, 0, 0, 0, &mut packet);
+        }
+        _ => {}
+    }
+    if packet.len != 0 {
+        // Window id 1 matches the HyperOS engine id used by the official host.
+        call_dispatch_window_pointer_data_packet(
+            (*state).holder,
+            1,
+            packet.bytes.as_ptr(),
+            packet.len,
+        );
+        if masked_action == AMOTION_EVENT_ACTION_DOWN {
+            log_static(ANDROID_LOG_INFO, b"Snow touch DOWN forwarded\0");
+        } else if masked_action == AMOTION_EVENT_ACTION_UP {
+            log_static(ANDROID_LOG_INFO, b"Snow touch UP forwarded\0");
+        }
+    }
+}
+
 unsafe extern "C" fn input_queue_callback(
     _: c_int,
     _: c_int,
@@ -1289,9 +1458,7 @@ unsafe extern "C" fn input_queue_callback(
         if AInputQueue_preDispatchEvent(queue, event) != 0 {
             continue;
         }
-        // v17 establishes a real native input consumer so InputDispatcher no
-        // longer times out. PointerDataPacket translation is the next layer;
-        // until then events are explicitly acknowledged instead of abandoned.
+        dispatch_motion_event(state, event);
         AInputQueue_finishEvent(queue, event, 1);
     }
     1

@@ -11,15 +11,3 @@
 #[no_mangle] pub extern "C" fn AInputQueue_getEvent(_: *mut core::ffi::c_void, _: *mut *mut core::ffi::c_void) -> i32 { -1 }
 #[no_mangle] pub extern "C" fn AInputQueue_preDispatchEvent(_: *mut core::ffi::c_void, _: *mut core::ffi::c_void) -> i32 { 0 }
 #[no_mangle] pub extern "C" fn AInputQueue_finishEvent(_: *mut core::ffi::c_void, _: *mut core::ffi::c_void, _: i32) {}
-#[no_mangle] pub extern "C" fn AInputEvent_getType(_: *const core::ffi::c_void) -> i32 { 0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getAction(_: *const core::ffi::c_void) -> i32 { 0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getPointerCount(_: *const core::ffi::c_void) -> usize { 0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getPointerId(_: *const core::ffi::c_void, _: usize) -> i32 { 0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getX(_: *const core::ffi::c_void, _: usize) -> f32 { 0.0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getY(_: *const core::ffi::c_void, _: usize) -> f32 { 0.0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getEventTime(_: *const core::ffi::c_void) -> i64 { 0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getPressure(_: *const core::ffi::c_void, _: usize) -> f32 { 0.0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getSize(_: *const core::ffi::c_void, _: usize) -> f32 { 0.0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getToolMajor(_: *const core::ffi::c_void, _: usize) -> f32 { 0.0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getToolMinor(_: *const core::ffi::c_void, _: usize) -> f32 { 0.0 }
-#[no_mangle] pub extern "C" fn AMotionEvent_getOrientation(_: *const core::ffi::c_void, _: usize) -> f32 { 0.0 }
